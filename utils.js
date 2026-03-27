@@ -139,6 +139,9 @@ const dbHelpers = {
   getReactionRole(messageId, emoji) {
     return db.prepare('SELECT * FROM reaction_roles WHERE message_id = ? AND emoji = ?').get(messageId, emoji);
   },
+  getReactionRolesByMessage(messageId) {
+    return db.prepare('SELECT * FROM reaction_roles WHERE message_id = ?').all(messageId);
+  },
   removeReactionRole(messageId, emoji) {
     db.prepare('DELETE FROM reaction_roles WHERE message_id = ? AND emoji = ?').run(messageId, emoji);
   },
