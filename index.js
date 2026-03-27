@@ -1301,18 +1301,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ═══════════════════════════════════════════════════════════════
 //  REACTION ROLE EVENTS
 // ═══════════════════════════════════════════════════════════════
+function findReactionRole(messageId, reactionEmoji) {
+  // Try exact match first
+  const emoji = reactionEmoji.id
+    ? `<:${reactionEmoji.name}:${reactionEmoji.id}>`
+    : reactionEmoji.name;
+  let rr = dbHelpers.getReactionRole(messageId, emoji);
+  if (rr) return rr;
+  // Try animated emoji format
+  if (reactionEmoji.id) {
+    rr = dbHelpers.getReactionRole(messageId, `<a:${reactionEmoji.name}:${reactionEmoji.id}>`);
+    if (rr) return rr;
+  }
+  // Try without variation selector (U+FE0F) for Unicode emojis
+  if (!reactionEmoji.id && reactionEmoji.name) {
+    const stripped = reactionEmoji.name.replace(/\uFE0F/g, '');
+    if (stripped !== reactionEmoji.name) {
+      rr = dbHelpers.getReactionRole(messageId, stripped);
+      if (rr) return rr;
+    }
+    // Try with variation selector added
+    rr = dbHelpers.getReactionRole(messageId, reactionEmoji.name + '\uFE0F');
+    if (rr) return rr;
+  }
+  return null;
+}
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
-  if (reaction.partial) {
-    try { await reaction.fetch(); } catch { return; }
-  }
-  const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
-  const rr = dbHelpers.getReactionRole(reaction.message.id, emoji);
+  try {
+    if (reaction.partial) await reaction.fetch();
+    if (reaction.message.partial) await reaction.message.fetch();
+  } catch { return; }
+  const rr = findReactionRole(reaction.message.id, reaction.emoji);
   if (!rr) return;
   try {
     const guild = reaction.message.guild;
+    if (!guild) return;
     const member = await guild.members.fetch(user.id);
-    const role = guild.roles.cache.get(rr.role_id);
+    const role = await guild.roles.fetch(rr.role_id);
     if (role && member) {
       await member.roles.add(role);
     }
@@ -1322,16 +1348,17 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 });
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
-  if (reaction.partial) {
-    try { await reaction.fetch(); } catch { return; }
-  }
-  const emoji = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
-  const rr = dbHelpers.getReactionRole(reaction.message.id, emoji);
+  try {
+    if (reaction.partial) await reaction.fetch();
+    if (reaction.message.partial) await reaction.message.fetch();
+  } catch { return; }
+  const rr = findReactionRole(reaction.message.id, reaction.emoji);
   if (!rr) return;
   try {
     const guild = reaction.message.guild;
+    if (!guild) return;
     const member = await guild.members.fetch(user.id);
-    const role = guild.roles.cache.get(rr.role_id);
+    const role = await guild.roles.fetch(rr.role_id);
     if (role && member) {
       await member.roles.remove(role);
     }
