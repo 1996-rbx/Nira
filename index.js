@@ -1674,7 +1674,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       .setColor(Colors.ERROR)
       .setTimestamp());
   }
-  // ── Supporter / Premium system (Nira server only) ──
+  // ── Premium system (Nira server only) ──
   if (NIRA_GUILD_ID && newMember.guild.id === NIRA_GUILD_ID) {
     // Check for booster (Premium)
     if (PREMIUM_ROLE_ID) {
@@ -1687,30 +1687,25 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       }
     }
   }
-});
-// ═══════════════════════════════════════════════════════════════
-//  SUPPORTER SYSTEM - Presence Update
-// ═══════════════════════════════════════════════════════════════
-client.on(Events.PresenceUpdate, async (oldPresence, newPresence) => {
-  if (!NIRA_GUILD_ID || !SUPPORTER_ROLE_ID) return;
-  if (!newPresence || !newPresence.guild || newPresence.guild.id !== NIRA_GUILD_ID) return;
-  const member = newPresence.member;
-  if (!member || member.user.bot) return;
-  // Check if user has "Nira" in their custom status or activity
-  const hasNiraTag = newPresence.activities.some(activity => {
-    const state = (activity.state || '').toLowerCase();
-    const name = (activity.name || '').toLowerCase();
-    return state.includes('nira') || name.includes('nira');
-  });
-  try {
-    const supporterRole = member.guild.roles.cache.get(SUPPORTER_ROLE_ID);
-    if (!supporterRole) return;
-    if (hasNiraTag && !member.roles.cache.has(SUPPORTER_ROLE_ID)) {
-      await member.roles.add(supporterRole);
-    } else if (!hasNiraTag && member.roles.cache.has(SUPPORTER_ROLE_ID)) {
-      await member.roles.remove(supporterRole);
+  // ── Supporter system - Server tag (clan) detection ──
+  if (SUPPORTER_ROLE_ID && !newMember.user.bot) {
+    try {
+      // Fetch user profile via REST API to get clan data
+      const userData = await client.rest.get(`/users/${newMember.user.id}`);
+      const hasClanTag = userData.clan && userData.clan.identity_guild_id === newMember.guild.id;
+      const supporterRole = await newMember.guild.roles.fetch(SUPPORTER_ROLE_ID);
+      if (!supporterRole) return;
+      if (hasClanTag && !newMember.roles.cache.has(SUPPORTER_ROLE_ID)) {
+        await newMember.roles.add(supporterRole);
+        console.log(`[Supporter] ✅ Role Supporter ajoute a ${newMember.user.tag} (tag serveur detecte)`);
+      } else if (!hasClanTag && newMember.roles.cache.has(SUPPORTER_ROLE_ID)) {
+        await newMember.roles.remove(supporterRole);
+        console.log(`[Supporter] ❌ Role Supporter retire de ${newMember.user.tag} (tag serveur retire)`);
+      }
+    } catch (err) {
+      // Silently ignore - API might not return clan data for all users
     }
-  } catch (_) { /* permissions */ }
+  }
 });
 // ═══════════════════════════════════════════════════════════════
 //  ERROR HANDLING
