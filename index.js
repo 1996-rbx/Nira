@@ -573,8 +573,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         sendOptions.files = [{ attachment: image.url, name: image.name }];
       }
       const sent = await targetChannel.send(sendOptions);
-      await sent.react(emoji);
-      dbHelpers.addReactionRole(guild.id, targetChannel.id, sent.id, emoji, role.id);
+      const reactionResult = await sent.react(emoji);
+      // Store the resolved emoji identifier from the actual reaction
+      const resolvedEmoji = reactionResult.emoji.id
+        ? `${reactionResult.emoji.name}:${reactionResult.emoji.id}`
+        : reactionResult.emoji.name;
+      dbHelpers.addReactionRole(guild.id, targetChannel.id, sent.id, resolvedEmoji, role.id);
       const embed = new EmbedBuilder()
         .setTitle('✅ Reaction Role configure')
         .setDescription(`**Message:** envoye dans ${targetChannel}\n**Emoji:** ${emoji}\n**Role:** ${role}`)
@@ -1301,28 +1305,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ═══════════════════════════════════════════════════════════════
 //  REACTION ROLE EVENTS
 // ═══════════════════════════════════════════════════════════════
+function normalizeEmoji(str) {
+  // Remove variation selectors, angle brackets, and normalize
+  return str.replace(/\uFE0F/g, '').replace(/^<a?:/, '').replace(/>$/, '').trim();
+}
 function findReactionRole(messageId, reactionEmoji) {
-  // Try exact match first
-  const emoji = reactionEmoji.id
-    ? `<:${reactionEmoji.name}:${reactionEmoji.id}>`
+  // Build the identifier the same way we store it
+  const emojiId = reactionEmoji.id
+    ? `${reactionEmoji.name}:${reactionEmoji.id}`
     : reactionEmoji.name;
-  let rr = dbHelpers.getReactionRole(messageId, emoji);
+  // Try exact match first
+  let rr = dbHelpers.getReactionRole(messageId, emojiId);
   if (rr) return rr;
-  // Try animated emoji format
-  if (reactionEmoji.id) {
-    rr = dbHelpers.getReactionRole(messageId, `<a:${reactionEmoji.name}:${reactionEmoji.id}>`);
-    if (rr) return rr;
+  // Fallback: get ALL reaction roles for this message and compare normalized
+  const allRR = dbHelpers.getReactionRolesByMessage(messageId);
+  if (!allRR || allRR.length === 0) return null;
+  const normalizedInput = normalizeEmoji(emojiId);
+  for (const entry of allRR) {
+    const normalizedStored = normalizeEmoji(entry.emoji);
+    if (normalizedStored === normalizedInput) return entry;
   }
-  // Try without variation selector (U+FE0F) for Unicode emojis
-  if (!reactionEmoji.id && reactionEmoji.name) {
-    const stripped = reactionEmoji.name.replace(/\uFE0F/g, '');
-    if (stripped !== reactionEmoji.name) {
-      rr = dbHelpers.getReactionRole(messageId, stripped);
-      if (rr) return rr;
+  // Also try matching by ID only (for custom emojis)
+  if (reactionEmoji.id) {
+    for (const entry of allRR) {
+      if (entry.emoji.includes(reactionEmoji.id)) return entry;
     }
-    // Try with variation selector added
-    rr = dbHelpers.getReactionRole(messageId, reactionEmoji.name + '\uFE0F');
-    if (rr) return rr;
   }
   return null;
 }
@@ -1331,9 +1338,17 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   try {
     if (reaction.partial) await reaction.fetch();
     if (reaction.message.partial) await reaction.message.fetch();
-  } catch { return; }
+  } catch (err) {
+    console.error('❌ Erreur fetch reaction/message:', err);
+    return;
+  }
+  console.log(`[ReactionRole] Reaction ajoutee: emoji="${reaction.emoji.name}" id=${reaction.emoji.id || 'none'} messageId=${reaction.message.id}`);
   const rr = findReactionRole(reaction.message.id, reaction.emoji);
-  if (!rr) return;
+  if (!rr) {
+    console.log(`[ReactionRole] Aucun reaction role trouve pour ce message/emoji`);
+    return;
+  }
+  console.log(`[ReactionRole] Match trouve! role_id=${rr.role_id}`);
   try {
     const guild = reaction.message.guild;
     if (!guild) return;
@@ -1341,6 +1356,9 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     const role = await guild.roles.fetch(rr.role_id);
     if (role && member) {
       await member.roles.add(role);
+      console.log(`[ReactionRole] ✅ Role "${role.name}" ajoute a ${user.tag}`);
+    } else {
+      console.log(`[ReactionRole] ⚠️ Role ou membre introuvable: role=${!!role} member=${!!member}`);
     }
   } catch (error) {
     console.error('❌ Erreur reaction role (add):', error);
@@ -1351,7 +1369,10 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
   try {
     if (reaction.partial) await reaction.fetch();
     if (reaction.message.partial) await reaction.message.fetch();
-  } catch { return; }
+  } catch (err) {
+    console.error('❌ Erreur fetch reaction/message:', err);
+    return;
+  }
   const rr = findReactionRole(reaction.message.id, reaction.emoji);
   if (!rr) return;
   try {
@@ -1361,6 +1382,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     const role = await guild.roles.fetch(rr.role_id);
     if (role && member) {
       await member.roles.remove(role);
+      console.log(`[ReactionRole] ✅ Role "${role.name}" retire de ${user.tag}`);
     }
   } catch (error) {
     console.error('❌ Erreur reaction role (remove):', error);
