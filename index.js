@@ -193,6 +193,31 @@ const commands = [
         { name: 'Logs', value: 'logs' },
       ))
     .addBooleanOption(o => o.setName('activer').setDescription('Activer ou desactiver').setRequired(true)),
+  // ── System Management Commands ──
+  new SlashCommandBuilder()
+    .setName('captcha')
+    .setDescription('Voir et gerer le systeme de captcha')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('reaction-roles')
+    .setDescription('Voir et gerer le systeme de reaction roles')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
+  new SlashCommandBuilder()
+    .setName('automod')
+    .setDescription('Voir et gerer le systeme d\'auto-moderation')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('antiraid')
+    .setDescription('Voir et gerer le systeme anti-raid')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('leveling')
+    .setDescription('Voir et gerer le systeme de niveaux')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('economie')
+    .setDescription('Voir et gerer le systeme d\'economie')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   // ── Help ──
   new SlashCommandBuilder()
     .setName('help')
@@ -315,6 +340,217 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const giveawayId = parseInt(interaction.customId.split('_')[1]);
       dbHelpers.enterGiveaway(giveawayId, interaction.user.id);
       return interaction.reply({ content: '🎉 Tu participes au giveaway!', ephemeral: true });
+    }
+    // ── System Toggle Buttons ──
+    if (interaction.customId.startsWith('sys_toggle_')) {
+      if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
+        return interaction.reply({ content: '❌ Tu n\'as pas la permission.', ephemeral: true });
+      }
+      const system = interaction.customId.replace('sys_toggle_', '');
+      const guildId = interaction.guild.id;
+      if (system === 'captcha') {
+        const config = dbHelpers.getGuild(guildId);
+        const newState = config.captcha_enabled ? 0 : 1;
+        dbHelpers.updateGuild(guildId, { captcha_enabled: newState });
+        const label = newState ? 'active' : 'desactive';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setDescription(`✅ Le systeme **Captcha** a ete **${label}**.`).setColor(newState ? Colors.SUCCESS : Colors.ERROR)],
+          ephemeral: true,
+        });
+      }
+      if (system === 'automod') {
+        const config = dbHelpers.getGuild(guildId);
+        const wasEnabled = !!config.automod_enabled && dbHelpers.isModuleEnabled(guildId, 'automod');
+        if (wasEnabled) {
+          dbHelpers.updateGuild(guildId, { automod_enabled: 0 });
+          dbHelpers.setModule(guildId, 'automod', false);
+        } else {
+          dbHelpers.updateGuild(guildId, { automod_enabled: 1 });
+          dbHelpers.setModule(guildId, 'automod', true);
+        }
+        const label = wasEnabled ? 'desactive' : 'active';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setDescription(`✅ Le systeme **Auto-Moderation** a ete **${label}**.`).setColor(!wasEnabled ? Colors.SUCCESS : Colors.ERROR)],
+          ephemeral: true,
+        });
+      }
+      if (system === 'antiraid') {
+        const config = dbHelpers.getGuild(guildId);
+        const newState = config.antiraid_enabled ? 0 : 1;
+        dbHelpers.updateGuild(guildId, { antiraid_enabled: newState });
+        const label = newState ? 'active' : 'desactive';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setDescription(`✅ Le systeme **Anti-Raid** a ete **${label}**.`).setColor(newState ? Colors.SUCCESS : Colors.ERROR)],
+          ephemeral: true,
+        });
+      }
+      if (system === 'leveling') {
+        const isEnabled = dbHelpers.isModuleEnabled(guildId, 'leveling');
+        dbHelpers.setModule(guildId, 'leveling', !isEnabled);
+        const label = isEnabled ? 'desactive' : 'active';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setDescription(`✅ Le systeme **Niveaux** a ete **${label}**.`).setColor(!isEnabled ? Colors.SUCCESS : Colors.ERROR)],
+          ephemeral: true,
+        });
+      }
+      if (system === 'economy') {
+        const isEnabled = dbHelpers.isModuleEnabled(guildId, 'economy');
+        dbHelpers.setModule(guildId, 'economy', !isEnabled);
+        const label = isEnabled ? 'desactive' : 'active';
+        return interaction.reply({
+          embeds: [new EmbedBuilder().setDescription(`✅ Le systeme **Economie** a ete **${label}**.`).setColor(!isEnabled ? Colors.SUCCESS : Colors.ERROR)],
+          ephemeral: true,
+        });
+      }
+    }
+    // ── System Test Buttons ──
+    if (interaction.customId.startsWith('sys_test_')) {
+      const system = interaction.customId.replace('sys_test_', '');
+      if (system === 'captcha') {
+        const code = generateCaptchaCode();
+        const imageBuffer = generateCaptchaImage(code);
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'captcha_test.png' });
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Verification Captcha')
+          .setDescription(
+            `Voici ce que les nouveaux membres verront:\n\n` +
+            `Bienvenue **NouveauMembre**!\n\n` +
+            `Pour acceder au serveur, entre le code affiche dans l'image ci-dessous.\n` +
+            `Utilise le bouton pour entrer ta reponse.\n\n` +
+            `⚠️ Tu as **3** essais.\n` +
+            `⏰ Tu seras kick automatiquement apres **10 minutes**.\n\n` +
+            `*Code de ce test: \`${code}\`*`
+          )
+          .setImage('attachment://captcha_test.png')
+          .setColor(Colors.INFO)
+          .setFooter({ text: '🧪 Ceci est un test - aucune action reelle n\'est effectuee' })
+          .setTimestamp();
+        const testButton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('sys_test_noop')
+            .setLabel('Entrer le code')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('🔐')
+            .setDisabled(true),
+        );
+        return interaction.reply({ embeds: [embed], files: [attachment], components: [testButton], ephemeral: true });
+      }
+      if (system === 'reaction') {
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Reaction Role')
+          .setDescription(
+            `Voici un exemple de message reaction role:\n\n` +
+            `──────────────────\n` +
+            `Choisis ton role en reagissant ci-dessous!\n\n` +
+            `🎮 → **Joueur**\n` +
+            `🎵 → **Musique**\n` +
+            `📢 → **Notifications**\n` +
+            `──────────────────\n\n` +
+            `> Les membres reagissent avec l'emoji correspondant et recoivent le role automatiquement.\n` +
+            `> Retirer la reaction = retirer le role.`
+          )
+          .setColor(Colors.PRIMARY)
+          .setFooter({ text: '🧪 Ceci est un test - aucune action reelle n\'est effectuee' })
+          .setTimestamp();
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+      if (system === 'automod') {
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Auto-Moderation')
+          .setDescription(
+            `Voici ce qui se passe quand l'auto-moderation detecte un abus:\n\n` +
+            `**1. Spam detecte (5+ messages en 10s):**\n` +
+            `> 🔇 L'utilisateur est mute 5 minutes automatiquement\n\n` +
+            `**2. Langage inapproprie:**`
+          )
+          .setColor(Colors.MODERATION)
+          .setTimestamp();
+        const preview1 = new EmbedBuilder()
+          .setDescription('🔇 @SpamUser a ete mute 5 minutes (spam detecte).')
+          .setColor(Colors.MODERATION);
+        const preview2 = new EmbedBuilder()
+          .setDescription('⚠️ @BadUser, ton message a ete supprime (langage inapproprie).')
+          .setColor(Colors.WARNING);
+        const preview3 = new EmbedBuilder()
+          .setDescription('⚠️ @LinkUser, les liens d\'invitation ne sont pas autorises.')
+          .setColor(Colors.WARNING);
+        const footer = new EmbedBuilder()
+          .setDescription('*🧪 Ceci est un test - aucune action reelle n\'est effectuee*')
+          .setColor(Colors.INFO);
+        return interaction.reply({ embeds: [embed, preview1, preview2, preview3, footer], ephemeral: true });
+      }
+      if (system === 'antiraid') {
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Anti-Raid')
+          .setDescription(
+            `Voici ce qui se passe lors d'un raid detecte:\n\n` +
+            `**Detection:** 5+ membres rejoignent en moins de 10 secondes\n\n` +
+            `**Action automatique:**`
+          )
+          .setColor(Colors.ERROR)
+          .setTimestamp();
+        const logPreview = new EmbedBuilder()
+          .setTitle('🛡️ Anti-Raid')
+          .setDescription('RaidBot#0001 a ete kick automatiquement (raid detecte)')
+          .setColor(Colors.ERROR);
+        const footer = new EmbedBuilder()
+          .setDescription('*🧪 Ceci est un test - les nouveaux membres seront kick automatiquement si un raid est detecte*')
+          .setColor(Colors.INFO);
+        return interaction.reply({ embeds: [embed, logPreview, footer], ephemeral: true });
+      }
+      if (system === 'leveling') {
+        const xpGain = 15 + Math.floor(Math.random() * 10);
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Systeme de Niveaux')
+          .setDescription(
+            `Voici ce que les membres voient quand ils montent de niveau:\n`
+          )
+          .setColor(Colors.PRIMARY)
+          .setTimestamp();
+        const levelUpPreview = new EmbedBuilder()
+          .setTitle('🎉 Level Up!')
+          .setDescription(`Felicitations ${interaction.user}! Tu es maintenant **niveau 5**!`)
+          .setColor(Colors.SUCCESS)
+          .setThumbnail(interaction.user.displayAvatarURL({ size: 128 }));
+        const rankPreview = new EmbedBuilder()
+          .setTitle(`📊 Niveau de ${interaction.user.username}`)
+          .addFields(
+            { name: '🏆 Niveau', value: '4', inline: true },
+            { name: '✨ XP', value: `${380 + xpGain}/600`, inline: true },
+            { name: '📈 Progression', value: '██████░░░░ 65%' },
+          )
+          .setColor(Colors.PRIMARY)
+          .setThumbnail(interaction.user.displayAvatarURL({ size: 128 }));
+        const footer = new EmbedBuilder()
+          .setDescription(`*🧪 Ceci est un test - Gain d'XP simule: +${xpGain} XP par message (cooldown 60s)*`)
+          .setColor(Colors.INFO);
+        return interaction.reply({ embeds: [embed, levelUpPreview, rankPreview, footer], ephemeral: true });
+      }
+      if (system === 'economy') {
+        const reward = 100 + Math.floor(Math.random() * 50);
+        const embed = new EmbedBuilder()
+          .setTitle('🧪 PREVIEW - Systeme d\'Economie')
+          .setDescription(`Voici ce que les membres voient:`)
+          .setColor(Colors.PRIMARY)
+          .setTimestamp();
+        const dailyPreview = new EmbedBuilder()
+          .setTitle('💰 Recompense quotidienne')
+          .setDescription(`Tu as recu **${reward}** pieces!\n💎 Nouveau solde: **${reward}** pieces`)
+          .setColor(Colors.SUCCESS);
+        const balancePreview = new EmbedBuilder()
+          .setTitle(`💰 Solde de ${interaction.user.username}`)
+          .setDescription(`**${reward}** pieces 💎`)
+          .setThumbnail(interaction.user.displayAvatarURL({ size: 128 }))
+          .setColor(Colors.PRIMARY);
+        const footer = new EmbedBuilder()
+          .setDescription('*🧪 Ceci est un test - aucune action reelle n\'est effectuee*')
+          .setColor(Colors.INFO);
+        return interaction.reply({ embeds: [embed, dailyPreview, balancePreview, footer], ephemeral: true });
+      }
+      // No-op button (disabled test buttons)
+      if (system === 'noop') {
+        return interaction.reply({ content: '🧪 Ceci est un bouton de test desactive.', ephemeral: true });
+      }
     }
     return;
   }
@@ -795,6 +1031,200 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
     }
+    // ── /captcha ── System management
+    if (commandName === 'captcha') {
+      const config = dbHelpers.getGuild(guild.id);
+      const isEnabled = !!config.captcha_enabled;
+      const captchaChannel = config.captcha_channel ? `<#${config.captcha_channel}>` : 'Non defini';
+      const captchaRole = config.captcha_role ? `<@&${config.captcha_role}>` : 'Non defini';
+      const embed = new EmbedBuilder()
+        .setTitle('🔐 Systeme Captcha')
+        .setDescription(
+          `**Statut:** ${isEnabled ? '🟢 Active' : '🔴 Desactive'}\n\n` +
+          `**Salon:** ${captchaChannel}\n` +
+          `**Role apres validation:** ${captchaRole}\n` +
+          `**Essais max:** ${config.captcha_retry_limit || 3}\n` +
+          `**Kick auto:** 10 minutes\n\n` +
+          `> Quand un membre rejoint, il doit resoudre un captcha visuel pour acceder au serveur.`
+        )
+        .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
+        .setFooter({ text: 'Utilise /setup-captcha pour configurer le salon et le role' })
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_toggle_captcha`)
+          .setLabel(isEnabled ? 'Desactiver' : 'Activer')
+          .setStyle(isEnabled ? ButtonStyle.Danger : ButtonStyle.Success)
+          .setEmoji(isEnabled ? '🔴' : '🟢'),
+        new ButtonBuilder()
+          .setCustomId(`sys_test_captcha`)
+          .setLabel('Tester')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
+    // ── /reaction-roles ── System management
+    if (commandName === 'reaction-roles') {
+      const { db } = require('./utils');
+      const rrList = db.prepare('SELECT * FROM reaction_roles WHERE guild_id = ?').all(guild.id);
+      const count = rrList.length;
+      let listDesc = '';
+      if (count > 0) {
+        listDesc = rrList.slice(0, 10).map((rr, i) =>
+          `**${i + 1}.** ${rr.emoji} → <@&${rr.role_id}> (dans <#${rr.channel_id}>)`
+        ).join('\n');
+        if (count > 10) listDesc += `\n... et ${count - 10} autre(s)`;
+      } else {
+        listDesc = '*Aucun reaction role configure.*';
+      }
+      const embed = new EmbedBuilder()
+        .setTitle('🔁 Systeme Reaction Roles')
+        .setDescription(
+          `**Statut:** ${count > 0 ? '🟢 Active' : '🔴 Aucun role configure'}\n` +
+          `**Nombre de reaction roles:** ${count}\n\n` +
+          `${listDesc}\n\n` +
+          `> Les membres reagissent a un message pour obtenir un role automatiquement.`
+        )
+        .setColor(count > 0 ? Colors.SUCCESS : Colors.ERROR)
+        .setFooter({ text: 'Utilise /setup-reaction pour ajouter un reaction role' })
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_test_reaction`)
+          .setLabel('Tester (preview)')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
+    // ── /automod ── System management
+    if (commandName === 'automod') {
+      const config = dbHelpers.getGuild(guild.id);
+      const isEnabled = !!config.automod_enabled;
+      const moduleEnabled = dbHelpers.isModuleEnabled(guild.id, 'automod');
+      const fullyActive = isEnabled && moduleEnabled;
+      const embed = new EmbedBuilder()
+        .setTitle('🛡️ Systeme Auto-Moderation')
+        .setDescription(
+          `**Statut:** ${fullyActive ? '🟢 Active' : '🔴 Desactive'}\n\n` +
+          `**Fonctionnalites:**\n` +
+          `> 🚫 **Anti-spam** - Detecte les messages rapides (5+ en 10s) → mute 5min\n` +
+          `> 🤬 **Filtre insultes** - Supprime les messages avec mots interdits\n` +
+          `> 🔗 **Anti-liens** - Bloque les invitations Discord non-autorisees\n\n` +
+          `> L'auto-moderation protege automatiquement le serveur contre les abus.`
+        )
+        .setColor(fullyActive ? Colors.SUCCESS : Colors.ERROR)
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_toggle_automod`)
+          .setLabel(fullyActive ? 'Desactiver' : 'Activer')
+          .setStyle(fullyActive ? ButtonStyle.Danger : ButtonStyle.Success)
+          .setEmoji(fullyActive ? '🔴' : '🟢'),
+        new ButtonBuilder()
+          .setCustomId(`sys_test_automod`)
+          .setLabel('Tester')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
+    // ── /antiraid ── System management
+    if (commandName === 'antiraid') {
+      const config = dbHelpers.getGuild(guild.id);
+      const isEnabled = !!config.antiraid_enabled;
+      const embed = new EmbedBuilder()
+        .setTitle('🛡️ Systeme Anti-Raid')
+        .setDescription(
+          `**Statut:** ${isEnabled ? '🟢 Active' : '🔴 Desactive'}\n\n` +
+          `**Fonctionnement:**\n` +
+          `> Detecte les raids (5+ joins en 10 secondes)\n` +
+          `> Les nouveaux membres sont kick automatiquement pendant un raid\n` +
+          `> Les logs sont envoyes dans le salon de logs\n\n` +
+          `> Protege le serveur contre les vagues d'arrivees massives de bots.`
+        )
+        .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_toggle_antiraid`)
+          .setLabel(isEnabled ? 'Desactiver' : 'Activer')
+          .setStyle(isEnabled ? ButtonStyle.Danger : ButtonStyle.Success)
+          .setEmoji(isEnabled ? '🔴' : '🟢'),
+        new ButtonBuilder()
+          .setCustomId(`sys_test_antiraid`)
+          .setLabel('Tester')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
+    // ── /leveling ── System management
+    if (commandName === 'leveling') {
+      const isEnabled = dbHelpers.isModuleEnabled(guild.id, 'leveling');
+      const topUsers = dbHelpers.getLeaderboard(guild.id, 3);
+      let topDesc = '';
+      if (topUsers.length > 0) {
+        const medals = ['🥇', '🥈', '🥉'];
+        topDesc = topUsers.map((u, i) => `${medals[i]} <@${u.user_id}> - Niv. **${u.level}** (${u.xp} XP)`).join('\n');
+      } else {
+        topDesc = '*Aucune donnee de niveau.*';
+      }
+      const embed = new EmbedBuilder()
+        .setTitle('📊 Systeme de Niveaux')
+        .setDescription(
+          `**Statut:** ${isEnabled ? '🟢 Active' : '🔴 Desactive'}\n\n` +
+          `**Fonctionnement:**\n` +
+          `> 💬 Gain de **15-24 XP** par message (cooldown 60s)\n` +
+          `> 🎉 Annonce de level up dans le salon\n` +
+          `> 🏆 Classement avec /rank\n\n` +
+          `**Top 3:**\n${topDesc}`
+        )
+        .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_toggle_leveling`)
+          .setLabel(isEnabled ? 'Desactiver' : 'Activer')
+          .setStyle(isEnabled ? ButtonStyle.Danger : ButtonStyle.Success)
+          .setEmoji(isEnabled ? '🔴' : '🟢'),
+        new ButtonBuilder()
+          .setCustomId(`sys_test_leveling`)
+          .setLabel('Tester')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
+    // ── /economie ── System management
+    if (commandName === 'economie') {
+      const isEnabled = dbHelpers.isModuleEnabled(guild.id, 'economy');
+      const embed = new EmbedBuilder()
+        .setTitle('💰 Systeme d\'Economie')
+        .setDescription(
+          `**Statut:** ${isEnabled ? '🟢 Active' : '🔴 Desactive'}\n\n` +
+          `**Fonctionnalites:**\n` +
+          `> 💎 **/daily** - Recompense quotidienne (100-150 pieces)\n` +
+          `> 💰 **/balance** - Voir son solde\n\n` +
+          `> Systeme d'economie virtuelle pour votre serveur.`
+        )
+        .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
+        .setTimestamp();
+      const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`sys_toggle_economy`)
+          .setLabel(isEnabled ? 'Desactiver' : 'Activer')
+          .setStyle(isEnabled ? ButtonStyle.Danger : ButtonStyle.Success)
+          .setEmoji(isEnabled ? '🔴' : '🟢'),
+        new ButtonBuilder()
+          .setCustomId(`sys_test_economy`)
+          .setLabel('Tester')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🧪'),
+      );
+      return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
+    }
     // ── /help ──
     if (commandName === 'help') {
       const embed = new EmbedBuilder()
@@ -802,14 +1232,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setDescription('Voici la liste de toutes les commandes disponibles.')
         .addFields(
           {
+            name: '📋 Gestion des systemes',
+            value: [
+              '`/captcha` - Voir/gerer le captcha',
+              '`/reaction-roles` - Voir/gerer les reaction roles',
+              '`/automod` - Voir/gerer l\'auto-moderation',
+              '`/antiraid` - Voir/gerer l\'anti-raid',
+              '`/leveling` - Voir/gerer les niveaux',
+              '`/economie` - Voir/gerer l\'economie',
+            ].join('\n'),
+          },
+          {
             name: '⚙️ Configuration',
             value: [
               '`/setup-reaction` - Creer un message reaction-role',
               '`/setup-captcha` - Configurer le captcha',
               '`/config logs` - Definir le salon de logs',
-              '`/config automod` - Auto-moderation',
-              '`/config antiraid` - Anti-raid',
-              '`/config leveling` - Systeme de niveaux',
               '`/config prefix` - Changer le prefixe',
               '`/config langue` - Changer la langue',
               '`/module` - Activer/desactiver un module',
