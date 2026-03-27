@@ -58,7 +58,7 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .addRoleOption(o => o.setName('role').setDescription('Le role a attribuer').setRequired(true))
     .addStringOption(o => o.setName('emoji').setDescription('L\'emoji a utiliser').setRequired(true))
-    .addStringOption(o => o.setName('message').setDescription('Le message a afficher').setRequired(true))
+    .addStringOption(o => o.setName('message').setDescription('Le message a afficher (optionnel si image)'))
     .addChannelOption(o => o.setName('salon').setDescription('Le salon ou envoyer le message'))
     .addAttachmentOption(o => o.setName('image').setDescription('Image a joindre au message')),
   // ── Setup Captcha ──
@@ -564,7 +564,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const messageText = options.getString('message');
       const targetChannel = options.getChannel('salon') || channel;
       const image = options.getAttachment('image');
-      const sendOptions = { content: messageText };
+      if (!messageText && !image) {
+        return interaction.reply({ content: '❌ Tu dois fournir au moins un **message** ou une **image**.', ephemeral: true });
+      }
+      const sendOptions = {};
+      if (messageText) sendOptions.content = messageText;
       if (image) {
         sendOptions.files = [{ attachment: image.url, name: image.name }];
       }
