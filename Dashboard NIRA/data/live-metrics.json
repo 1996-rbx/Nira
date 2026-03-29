@@ -4,8 +4,8 @@
     "communitiesReached": 3045,
     "serversTracked": 7,
     "uptimePercent": 100,
-    "latencyMs": 39,
-    "automationsRunning": 3
+    "latencyMs": 54,
+    "automationsRunning": 287
   },
   "guildMetrics": {}
 }
