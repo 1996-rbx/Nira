@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Discord</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="background-orb orb-left"></div>
+      <div class="background-orb orb-right"></div>
+
+      <header class="topbar">
+        <a class="brand-lockup" href="/">
+          <img class="brand-logo" data-app-logo src="/assets/logo.svg" alt="Logo" />
+          <div>
+            <p class="eyebrow">Discord bot control center</p>
+            <h1 data-app-name>Dashboard Discord</h1>
+          </div>
+        </a>
+
+        <div class="topbar-right">
+          <nav class="top-nav">
+            <a data-nav="home" href="/">Accueil</a>
+            <a data-nav="dashboard" href="/dashboard">Dashboard</a>
+            <a data-nav="activity" href="/activity">Activite</a>
+            <a data-nav="settings" href="/settings">Reglages</a>
+          </nav>
+
+          <div class="auth-zone">
+            <a id="login-link" class="ghost-button" href="/auth/discord/login">Connexion Discord</a>
+            <div id="user-chip" class="user-chip hidden"></div>
+            <button id="logout-button" class="ghost-button hidden" type="button">Deconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-grid">
+        <section class="panel hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow accent">Vue d'ensemble</p>
+            <h2>Le tableau de bord de ton bot Discord, en temps reel.</h2>
+            <p id="welcome-text" class="hero-text">
+              Connecte ton compte Discord pour retrouver tes serveurs et piloter les stats principales.
+            </p>
+
+            <div class="button-row">
+              <a id="hero-main-link" class="primary-button" href="/dashboard">Ouvrir le dashboard</a>
+              <a class="ghost-button" href="/settings">Verifier la configuration</a>
+              <span id="live-pill" class="pill">Auto refresh</span>
+            </div>
+          </div>
+
+          <div class="hero-metrics">
+            <article class="metric-card">
+              <span class="metric-label">Commandes depuis le debut</span>
+              <strong id="hero-commands" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Utilisateurs touches</span>
+              <strong id="hero-users" class="metric-value">0</strong>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Uptime</span>
+              <strong id="hero-uptime" class="metric-value">0%</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Resume rapide</p>
+              <h3>Ce que le dashboard voit maintenant</h3>
+            </div>
+            <span id="last-updated" class="pill">Chargement...</span>
+          </div>
+
+          <div id="home-summary" class="card-grid three-col"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Activite</p>
+              <h3>Derniers signaux du bot</h3>
+            </div>
+          </div>
+
+          <div id="home-activity" class="stack-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/home.js"></script>
+  </body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reglages</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="background-orb orb-left"></div>
+      <div class="background-orb orb-right"></div>
+
+      <header class="topbar">
+        <a class="brand-lockup" href="/">
+          <img class="brand-logo" data-app-logo src="/assets/logo.svg" alt="Logo" />
+          <div>
+            <p class="eyebrow">Discord bot control center</p>
+            <h1 data-app-name>Dashboard Discord</h1>
+          </div>
+        </a>
+
+        <div class="topbar-right">
+          <nav class="top-nav">
+            <a data-nav="home" href="/">Accueil</a>
+            <a data-nav="dashboard" href="/dashboard">Dashboard</a>
+            <a data-nav="activity" href="/activity">Activite</a>
+            <a data-nav="settings" href="/settings">Reglages</a>
+          </nav>
+
+          <div class="auth-zone">
+            <a id="login-link" class="ghost-button" href="/auth/discord/login">Connexion Discord</a>
+            <div id="user-chip" class="user-chip hidden"></div>
+            <button id="logout-button" class="ghost-button hidden" type="button">Deconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-grid two-column-layout">
+        <section class="stack-list">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Discord OAuth</p>
+                <h2 class="section-title">Pourquoi la connexion peut bloquer</h2>
+              </div>
+            </div>
+
+            <div id="oauth-status" class="stack-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Compte live</p>
+                <h3>Mettre de vraies infos dans les compteurs</h3>
+              </div>
+            </div>
+
+            <div class="stack-list">
+              <article class="info-card">
+                <strong>Fichier live a mettre a jour</strong>
+                <code id="live-file-path" class="code-chip">data/live-metrics.json</code>
+                <p class="muted">Ton bot peut reecrire ce fichier a intervalle regulier. Le dashboard le relit automatiquement.</p>
+              </article>
+
+              <article class="info-card">
+                <strong>Exemple minimal</strong>
+                <pre class="code-block" id="live-sample"></pre>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="stack-list">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Logo</p>
+                <h3>Changer le logo du site</h3>
+              </div>
+            </div>
+
+            <div class="stack-list">
+              <article class="info-card">
+                <strong>Fichier utilise</strong>
+                <code class="code-chip">public/assets/logo.svg</code>
+                <p class="muted">Remplace ce fichier par ton propre logo. Garde le meme nom pour ne rien casser.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Rappels</p>
+                <h3>Points de controle</h3>
+              </div>
+            </div>
+
+            <div id="warning-list" class="stack-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/settings-page.js"></script>
+  </body>
+</html>

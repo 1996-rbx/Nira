@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Activite</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="background-orb orb-left"></div>
+      <div class="background-orb orb-right"></div>
+
+      <header class="topbar">
+        <a class="brand-lockup" href="/">
+          <img class="brand-logo" data-app-logo src="/assets/logo.svg" alt="Logo" />
+          <div>
+            <p class="eyebrow">Discord bot control center</p>
+            <h1 data-app-name>Dashboard Discord</h1>
+          </div>
+        </a>
+
+        <div class="topbar-right">
+          <nav class="top-nav">
+            <a data-nav="home" href="/">Accueil</a>
+            <a data-nav="dashboard" href="/dashboard">Dashboard</a>
+            <a data-nav="activity" href="/activity">Activite</a>
+            <a data-nav="settings" href="/settings">Reglages</a>
+          </nav>
+
+          <div class="auth-zone">
+            <a id="login-link" class="ghost-button" href="/auth/discord/login">Connexion Discord</a>
+            <div id="user-chip" class="user-chip hidden"></div>
+            <button id="logout-button" class="ghost-button hidden" type="button">Deconnexion</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-grid two-column-layout">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Flux live</p>
+              <h2 class="section-title">Derniere activite</h2>
+            </div>
+            <span id="last-updated" class="pill">Chargement...</span>
+          </div>
+
+          <div id="activity-list" class="stack-list"></div>
+        </section>
+
+        <section class="stack-list">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Modules</p>
+                <h3>Fonctions mises en avant</h3>
+              </div>
+            </div>
+
+            <div id="module-list" class="stack-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Instantane</p>
+                <h3>Compteurs en direct</h3>
+              </div>
+            </div>
+
+            <div id="activity-summary" class="card-grid one-col"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/activity.js"></script>
+  </body>
+</html>
