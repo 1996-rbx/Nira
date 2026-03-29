@@ -1,11 +1,11 @@
 {
   "overview": {
-    "commandsTotal": 1832568,
-    "communitiesReached": 146610,
-    "serversTracked": 329,
-    "uptimePercent": 99.98,
-    "latencyMs": 49,
-    "automationsRunning": 291
+    "commandsTotal": 1.2K,
+    "communitiesReached": 3K,
+    "serversTracked": 7,
+    "uptimePercent": 100,
+    "latencyMs": 39,
+    "automationsRunning": 3
   },
   "guildMetrics": {}
 }
