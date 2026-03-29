@@ -33,6 +33,21 @@ function getCount(query, params = []) {
   return db.prepare(query).get(...params).count || 0;
 }
 
+function ensureGuildConfig(guildId) {
+  if (!guildId) {
+    return null;
+  }
+
+  let row = db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId);
+
+  if (!row) {
+    db.prepare('INSERT OR IGNORE INTO guilds (guild_id) VALUES (?)').run(guildId);
+    row = db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId);
+  }
+
+  return row || null;
+}
+
 function touchDashboardUser(guildId, userId) {
   if (!guildId || !userId) {
     return;
@@ -74,11 +89,23 @@ function addDashboardEvent(guildId, title, description) {
 }
 
 function getGuildConfig(guildId) {
-  if (!guildId) {
-    return null;
+  return ensureGuildConfig(guildId);
+}
+
+function updateGuildConfig(guildId, data) {
+  const entries = Object.entries(data || {}).filter(([, value]) => value !== undefined);
+
+  if (!guildId || entries.length === 0) {
+    return getGuildConfig(guildId);
   }
 
-  return db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId) || null;
+  ensureGuildConfig(guildId);
+
+  const columns = entries.map(([key]) => `${key} = ?`).join(', ');
+  const values = entries.map(([, value]) => value);
+
+  db.prepare(`UPDATE guilds SET ${columns} WHERE guild_id = ?`).run(...values, guildId);
+  return getGuildConfig(guildId);
 }
 
 function isModuleEnabled(guildId, moduleName) {
@@ -89,8 +116,52 @@ function isModuleEnabled(guildId, moduleName) {
   return row ? row.enabled === 1 : true;
 }
 
+function setModuleEnabled(guildId, moduleName, enabled) {
+  if (!guildId || !moduleName) {
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO modules (guild_id, module_name, enabled)
+    VALUES (?, ?, ?)
+    ON CONFLICT(guild_id, module_name)
+    DO UPDATE SET enabled = excluded.enabled
+  `).run(guildId, moduleName, enabled ? 1 : 0);
+}
+
 function getReactionRoleCount(guildId) {
   return getCount('SELECT COUNT(*) AS count FROM reaction_roles WHERE guild_id = ?', [guildId]);
+}
+
+function listReactionRoles(guildId) {
+  return db.prepare(`
+    SELECT id, guild_id, channel_id, message_id, emoji, role_id
+    FROM reaction_roles
+    WHERE guild_id = ?
+    ORDER BY id DESC
+  `).all(guildId);
+}
+
+function addReactionRole(guildId, channelId, messageId, emoji, roleId) {
+  db.prepare(`
+    INSERT INTO reaction_roles (guild_id, channel_id, message_id, emoji, role_id)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(guildId, channelId, messageId, emoji, roleId);
+}
+
+function removeReactionRoleById(guildId, reactionRoleId) {
+  const row = db.prepare(`
+    SELECT id, guild_id, channel_id, message_id, emoji, role_id
+    FROM reaction_roles
+    WHERE guild_id = ? AND id = ?
+  `).get(guildId, reactionRoleId);
+
+  if (!row) {
+    return null;
+  }
+
+  db.prepare('DELETE FROM reaction_roles WHERE id = ? AND guild_id = ?').run(reactionRoleId, guildId);
+  return row;
 }
 
 function getGuildCommandStats(guildId) {
@@ -129,11 +200,21 @@ function getRecentEvents(limit) {
   `).all(limit);
 }
 
+function getOpenTicketCount(guildId) {
+  return getCount(
+    "SELECT COUNT(*) AS count FROM tickets WHERE guild_id = ? AND status = 'open'",
+    [guildId],
+  );
+}
+
 module.exports = {
   addDashboardEvent,
+  addReactionRole,
   db,
+  ensureGuildConfig,
   getGuildCommandStats,
   getGuildConfig,
+  getOpenTicketCount,
   getReactionRoleCount,
   getRecentEvents,
   getSeenUsersCount,
@@ -141,5 +222,9 @@ module.exports = {
   getTrackedUsersCount,
   incrementDashboardCommand,
   isModuleEnabled,
+  listReactionRoles,
+  removeReactionRoleById,
+  setModuleEnabled,
   touchDashboardUser,
+  updateGuildConfig,
 };

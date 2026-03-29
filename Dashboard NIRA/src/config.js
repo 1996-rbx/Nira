@@ -42,9 +42,32 @@ function loadEnvFile() {
 loadEnvFile();
 
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
+const liveMetricsUrl = process.env.LIVE_METRICS_URL || "";
+
+function deriveBotControlUrl(sourceUrl) {
+  if (!sourceUrl) {
+    return "";
+  }
+
+  try {
+    const url = new URL(sourceUrl);
+
+    if (url.pathname.endsWith("/api/dashboard/live")) {
+      url.pathname = url.pathname.replace(/\/api\/dashboard\/live$/u, "/api/dashboard/control");
+      url.search = "";
+      return url.toString();
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
 
 export const config = {
   appName: process.env.APP_NAME || "Discord Dashboard",
+  botControlTimeoutMs: Number.parseInt(process.env.BOT_CONTROL_TIMEOUT_MS || "5000", 10),
+  botControlUrl: process.env.BOT_CONTROL_URL || deriveBotControlUrl(liveMetricsUrl),
   cookieName: "nira_session",
   demoLiveEnabled: process.env.DEMO_LIVE_MODE !== "false",
   oauthStateCookieName: "nira_oauth_state",
@@ -56,7 +79,7 @@ export const config = {
   discordClientSecret: process.env.DISCORD_CLIENT_SECRET || "",
   liveDataFilePath: path.resolve(process.cwd(), "data", "live-metrics.json"),
   liveMetricsTimeoutMs: Number.parseInt(process.env.LIVE_METRICS_TIMEOUT_MS || "4000", 10),
-  liveMetricsUrl: process.env.LIVE_METRICS_URL || "",
+  liveMetricsUrl,
   liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "60000", 10),
   port: Number.parseInt(process.env.PORT || "3000", 10),
   publicBaseUrl,
@@ -71,6 +94,12 @@ export function getSetupWarnings() {
   if (!config.liveMetricsUrl) {
     warnings.push(
       "Le dashboard lit encore data/live-metrics.json en local. Sur Railway, configure LIVE_METRICS_URL pour recuperer les vraies stats du bot.",
+    );
+  }
+
+  if (config.liveMetricsUrl && !config.botControlUrl) {
+    warnings.push(
+      "Le pilotage distant n'est pas configure. Ajoute BOT_CONTROL_URL ou laisse le dashboard le deduire depuis LIVE_METRICS_URL.",
     );
   }
 

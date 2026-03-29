@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 import http from "node:http";
 import { config } from "./config.js";
+import { getRemoteControlPayload, updateRemoteControlPayload } from "./control.js";
+import { getDashboardPayload, getSessionPayload } from "./data.js";
 import {
   buildDiscordAuthorizeUrl,
   exchangeCodeForAccessToken,
@@ -9,7 +11,6 @@ import {
   filterGuildsByBotPresence,
   isDiscordAuthConfigured
 } from "./discord.js";
-import { getDashboardPayload, getSessionPayload } from "./data.js";
 import {
   clearCookie,
   parseCookies,
@@ -74,12 +75,38 @@ function parseSelectedGuildId(request) {
   return url.searchParams.get("guildId");
 }
 
+function ensureAuthenticatedSession(session) {
+  if (session) {
+    return;
+  }
+
+  const error = new Error("Connecte ton compte Discord pour piloter le bot a distance.");
+  error.statusCode = 401;
+  throw error;
+}
+
+function ensureGuildAccess(guilds, guildId) {
+  if (!guildId) {
+    const error = new Error("Choisis un serveur avant d'utiliser le pilotage distant.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (guilds.some((guild) => guild.id === guildId)) {
+    return;
+  }
+
+  const error = new Error("Ce serveur n'est pas disponible pour ton compte Discord.");
+  error.statusCode = 403;
+  throw error;
+}
+
 async function handleDiscordLogin(response) {
   if (!isDiscordAuthConfigured()) {
     sendText(
       response,
       503,
-      "Renseigne DISCORD_CLIENT_ID et DISCORD_CLIENT_SECRET dans le fichier .env avant d'activer la connexion Discord.",
+      "Renseigne DISCORD_CLIENT_ID et DISCORD_CLIENT_SECRET dans le fichier .env avant d'activer la connexion Discord."
     );
     return;
   }
@@ -92,7 +119,7 @@ async function handleDiscordLogin(response) {
 
 async function handleDiscordCallback(request, response) {
   if (!isDiscordAuthConfigured()) {
-    sendText(response, 503, "Configuration OAuth Discord incomplÃ¨te.");
+    sendText(response, 503, "Configuration OAuth Discord incomplete.");
     return;
   }
 
@@ -103,7 +130,7 @@ async function handleDiscordCallback(request, response) {
   const expectedState = verifySignedValue(cookies[config.oauthStateCookieName]);
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    sendText(response, 400, "Le paramÃ¨tre state Discord est invalide ou expirÃ©.");
+    sendText(response, 400, "Le parametre state Discord est invalide ou expire.");
     return;
   }
 
@@ -122,11 +149,7 @@ async function handleDiscordCallback(request, response) {
     setSessionCookie(response, signedSessionId, expiresAt);
     sendRedirect(response, "/");
   } catch (error) {
-    sendText(
-      response,
-      500,
-      `Connexion Discord impossible pour le moment.\n\n${error.message}`,
-    );
+    sendText(response, 500, `Connexion Discord impossible pour le moment.\n\n${error.message}`);
   }
 }
 
@@ -152,47 +175,94 @@ async function handleDashboard(request, response) {
   sendJson(response, 200, await getDashboardPayload(session, guilds, selectedGuildId));
 }
 
+async function handleControlGet(request, response) {
+  const { guilds, session } = await resolveSessionContext(request);
+  const selectedGuildId = parseSelectedGuildId(request);
+
+  ensureAuthenticatedSession(session);
+  ensureGuildAccess(guilds, selectedGuildId);
+
+  sendJson(response, 200, await getRemoteControlPayload(selectedGuildId));
+}
+
+async function handleControlPost(request, response) {
+  const { guilds, session } = await resolveSessionContext(request);
+  const selectedGuildId = parseSelectedGuildId(request);
+  const rawBody = await getRequestBody(request);
+
+  ensureAuthenticatedSession(session);
+  ensureGuildAccess(guilds, selectedGuildId);
+
+  let payload = {};
+
+  if (rawBody) {
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      sendText(response, 400, "Corps JSON invalide.");
+      return;
+    }
+  }
+
+  sendJson(response, 200, await updateRemoteControlPayload(selectedGuildId, payload));
+}
+
 export function createAppServer() {
   return http.createServer(async (request, response) => {
     if (!request.url || !request.method) {
-      sendText(response, 400, "RequÃªte invalide.");
+      sendText(response, 400, "Requete invalide.");
       return;
     }
 
     const pathname = new URL(request.url, config.publicBaseUrl).pathname;
 
-    if (request.method === "GET" && pathname === "/auth/discord/login") {
-      await handleDiscordLogin(response);
-      return;
-    }
+    try {
+      if (request.method === "GET" && pathname === "/auth/discord/login") {
+        await handleDiscordLogin(response);
+        return;
+      }
 
-    if (request.method === "GET" && pathname === "/auth/discord/callback") {
-      await handleDiscordCallback(request, response);
-      return;
-    }
+      if (request.method === "GET" && pathname === "/auth/discord/callback") {
+        await handleDiscordCallback(request, response);
+        return;
+      }
 
-    if (request.method === "POST" && pathname === "/auth/logout") {
-      await getRequestBody(request);
-      await handleLogout(request, response);
-      return;
-    }
+      if (request.method === "POST" && pathname === "/auth/logout") {
+        await getRequestBody(request);
+        await handleLogout(request, response);
+        return;
+      }
 
-    if (request.method === "GET" && pathname === "/api/session") {
-      await handleSession(request, response);
-      return;
-    }
+      if (request.method === "GET" && pathname === "/api/session") {
+        await handleSession(request, response);
+        return;
+      }
 
-    if (request.method === "GET" && pathname === "/api/dashboard") {
-      await handleDashboard(request, response);
-      return;
-    }
+      if (request.method === "GET" && pathname === "/api/dashboard") {
+        await handleDashboard(request, response);
+        return;
+      }
 
-    if (request.method === "GET" && pathname === "/settings") {
-      sendRedirect(response, "/dashboard");
-      return;
-    }
+      if (request.method === "GET" && pathname === "/api/control") {
+        await handleControlGet(request, response);
+        return;
+      }
 
-    if (request.method === "GET" && serveStaticAsset(request, response)) {
+      if (request.method === "POST" && pathname === "/api/control") {
+        await handleControlPost(request, response);
+        return;
+      }
+
+      if (request.method === "GET" && pathname === "/settings") {
+        sendRedirect(response, "/dashboard");
+        return;
+      }
+
+      if (request.method === "GET" && serveStaticAsset(request, response)) {
+        return;
+      }
+    } catch (error) {
+      sendText(response, error.statusCode || 500, error.message || "Erreur serveur.");
       return;
     }
 

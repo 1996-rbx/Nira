@@ -15,8 +15,8 @@
         <a class="brand-lockup" href="/">
           <img class="brand-logo" data-app-logo src="/assets/logo.svg" alt="Logo" />
           <div>
-            <p class="eyebrow">Discord bot control center</p>
-            <h1 data-app-name>Dashboard Discord</h1>
+            <p class="eyebrow">Nira bot dashboard</p>
+            <h1 data-app-name>Dashboard Nira</h1>
           </div>
         </a>
 
@@ -39,8 +39,8 @@
         <section class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Dashboard principal</p>
-              <h2 class="section-title">Les compteurs globaux du bot</h2>
+              <p class="eyebrow">Statistiques</p>
+              <h2 class="section-title">Les compteurs globaux de Nira</h2>
             </div>
             <div class="inline-info">
               <span id="refresh-pill" class="pill">Auto refresh</span>
@@ -54,8 +54,8 @@
         <section class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Serveur connecte</p>
-              <h3>Choisis un serveur a piloter</h3>
+              <p class="eyebrow">Serveur</p>
+              <h3>Choisis un serveur a afficher</h3>
             </div>
 
             <div class="select-wrap">
@@ -81,6 +81,46 @@
             </div>
 
             <div id="server-grid" class="card-grid two-col"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Pilotage distant</p>
+              <h3>Centre de controle du bot</h3>
+            </div>
+            <div class="inline-info">
+              <span id="control-mode-pill" class="pill">Configuration distante</span>
+              <span id="control-updated" class="pill">En attente...</span>
+            </div>
+          </div>
+
+          <div id="control-empty" class="empty-card">
+            Connecte Discord et choisis un serveur pour piloter les modules et retrouver toutes les commandes du bot.
+          </div>
+
+          <div id="control-feedback" class="notice-card hidden"></div>
+
+          <div id="control-content" class="stack-list hidden">
+            <div id="control-summary" class="card-grid three-col"></div>
+
+            <div class="control-grid">
+              <div id="control-general-card" class="admin-card"></div>
+              <div id="control-modules-card" class="admin-card"></div>
+            </div>
+
+            <div class="control-grid">
+              <div id="control-captcha-card" class="admin-card"></div>
+              <div id="control-reaction-card" class="admin-card"></div>
+            </div>
+
+            <div class="control-grid">
+              <div id="control-welcome-card" class="admin-card"></div>
+              <div id="control-ticket-card" class="admin-card"></div>
+            </div>
+
+            <div id="command-catalog-card" class="admin-card"></div>
           </div>
         </section>
       </main>
