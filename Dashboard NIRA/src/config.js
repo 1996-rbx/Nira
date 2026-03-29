@@ -57,7 +57,7 @@ export const config = {
   liveDataFilePath: path.resolve(process.cwd(), "data", "live-metrics.json"),
   liveMetricsTimeoutMs: Number.parseInt(process.env.LIVE_METRICS_TIMEOUT_MS || "4000", 10),
   liveMetricsUrl: process.env.LIVE_METRICS_URL || "",
-  liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "2500", 10),
+  liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "60000", 10),
   port: Number.parseInt(process.env.PORT || "3000", 10),
   publicBaseUrl,
   redirectUri: new URL("/auth/discord/callback", publicBaseUrl).toString(),

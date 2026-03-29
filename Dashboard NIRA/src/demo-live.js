@@ -164,18 +164,20 @@ function tick(state) {
 }
 
 export function startDemoLiveMetrics() {
-  if (config.liveMetricsUrl || !config.demoLiveEnabled || liveTimer) {
+  if (!config.demoLiveEnabled || liveTimer) {
     return () => {};
   }
 
   const state = createInitialState();
-  const intervalMs = Math.max(2500, config.liveRefreshMs || 2500);
+  const intervalMs = Math.max(60000, config.liveRefreshMs || 60000);
 
   tick(state);
   liveTimer = setInterval(() => tick(state), intervalMs);
   liveTimer.unref?.();
 
-  console.log(`Mode demo actif: data/live-metrics.json sera actualise toutes les ${intervalMs} ms.`);
+  console.log(
+    `Mode demo actif: data/live-metrics.json sera actualise toutes les ${intervalMs} ms.`,
+  );
 
   return () => {
     if (liveTimer) {
