@@ -1,0 +1,68 @@
+{
+  "overview": {
+    "commandsTotal": 1832450,
+    "communitiesReached": 146520,
+    "premiumServers": 41,
+    "serversTracked": 328,
+    "uptimePercent": 99.96,
+    "latencyMs": 54,
+    "automationsRunning": 287
+  },
+  "modules": [
+    {
+      "title": "Moderation intelligente",
+      "description": "Détection rapide des comportements à risque, tout en gardant une expérience fluide."
+    },
+    {
+      "title": "Welcome & onboarding",
+      "description": "Messages d'accueil, rôles automatiques et parcours d'arrivée premium."
+    },
+    {
+      "title": "Logs & analytics",
+      "description": "Historique lisible, activité récente et métriques utiles pour les staffs."
+    }
+  ],
+  "recentActivity": [
+    {
+      "title": "Pic d'utilisation sur /profile",
+      "description": "Les commandes profil ont gagné 18% sur les dernières 24h.",
+      "timestamp": "2026-03-29T10:42:00.000Z"
+    },
+    {
+      "title": "Nouvelle communauté premium",
+      "description": "Un nouveau serveur a activé les modules analytics premium.",
+      "timestamp": "2026-03-29T09:18:00.000Z"
+    },
+    {
+      "title": "Automations stabilisées",
+      "description": "Les workflows background tiennent un uptime supérieur à 99.9%.",
+      "timestamp": "2026-03-29T08:07:00.000Z"
+    },
+    {
+      "title": "Progression des messages de bienvenue",
+      "description": "Le funnel d'onboarding convertit mieux cette semaine.",
+      "timestamp": "2026-03-28T21:16:00.000Z"
+    },
+    {
+      "title": "Serveurs actifs en hausse",
+      "description": "Le nombre de serveurs actifs a augmenté de 6% sur 7 jours.",
+      "timestamp": "2026-03-28T17:55:00.000Z"
+    },
+    {
+      "title": "Logs premium synchronisés",
+      "description": "La synchronisation des derniers évènements est terminée.",
+      "timestamp": "2026-03-28T14:32:00.000Z"
+    },
+    {
+      "title": "Temps de réponse optimisé",
+      "description": "La latence moyenne a encore baissé sur la dernière heure.",
+      "timestamp": "2026-03-28T12:28:00.000Z"
+    },
+    {
+      "title": "Nouveau record de commandes",
+      "description": "La barre du million de commandes mensuelles est dépassée.",
+      "timestamp": "2026-03-27T19:46:00.000Z"
+    }
+  ],
+  "guildMetrics": {}
+}
