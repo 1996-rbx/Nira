@@ -7,9 +7,7 @@ const crypto = require('crypto');
 // ═══════════════════════════════════════════════════════════════
 const db = new Database(path.join(__dirname, 'nira.db'));
 db.pragma('journal_mode = WAL');
-// Initialize tables
 db.exec(`
-  -- Guild configuration
   CREATE TABLE IF NOT EXISTS guilds (
     guild_id TEXT PRIMARY KEY,
     prefix TEXT DEFAULT '!',
@@ -21,9 +19,18 @@ db.exec(`
     captcha_retry_limit INTEGER DEFAULT 3,
     automod_enabled INTEGER DEFAULT 0,
     antiraid_enabled INTEGER DEFAULT 0,
-    leveling_enabled INTEGER DEFAULT 1
+    leveling_enabled INTEGER DEFAULT 1,
+    welcome_channel TEXT,
+    welcome_message TEXT DEFAULT 'Bienvenue {user} sur **{server}** ! Tu es le membre numéro **{count}**.',
+    welcome_embed INTEGER DEFAULT 1,
+    welcome_color TEXT DEFAULT '#5865F2',
+    welcome_title TEXT DEFAULT 'Bienvenue !',
+    welcome_avatar INTEGER DEFAULT 1,
+    ticket_channel TEXT,
+    ticket_staff_role TEXT,
+    ticket_category TEXT,
+    ticket_count INTEGER DEFAULT 0
   );
-  -- Reaction roles
   CREATE TABLE IF NOT EXISTS reaction_roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -33,7 +40,6 @@ db.exec(`
     role_id TEXT NOT NULL,
     UNIQUE(message_id, emoji)
   );
-  -- Warnings
   CREATE TABLE IF NOT EXISTS warnings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -42,7 +48,6 @@ db.exec(`
     reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
-  -- XP / Leveling
   CREATE TABLE IF NOT EXISTS levels (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -51,7 +56,6 @@ db.exec(`
     last_message TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (guild_id, user_id)
   );
-  -- Economy
   CREATE TABLE IF NOT EXISTS economy (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -59,7 +63,6 @@ db.exec(`
     last_daily TEXT,
     PRIMARY KEY (guild_id, user_id)
   );
-  -- Giveaways
   CREATE TABLE IF NOT EXISTS giveaways (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -71,14 +74,12 @@ db.exec(`
     ended INTEGER DEFAULT 0,
     host_id TEXT NOT NULL
   );
-  -- Giveaway entries
   CREATE TABLE IF NOT EXISTS giveaway_entries (
     giveaway_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
     PRIMARY KEY (giveaway_id, user_id),
     FOREIGN KEY (giveaway_id) REFERENCES giveaways(id)
   );
-  -- Captcha pending
   CREATE TABLE IF NOT EXISTS captcha_pending (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -87,7 +88,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (guild_id, user_id)
   );
-  -- Mod logs
   CREATE TABLE IF NOT EXISTS mod_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -97,26 +97,63 @@ db.exec(`
     reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
-  -- Mutes
   CREATE TABLE IF NOT EXISTS mutes (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     unmute_at TEXT,
     PRIMARY KEY (guild_id, user_id)
   );
-  -- Disabled modules per guild
   CREATE TABLE IF NOT EXISTS modules (
     guild_id TEXT NOT NULL,
     module_name TEXT NOT NULL,
     enabled INTEGER DEFAULT 1,
     PRIMARY KEY (guild_id, module_name)
   );
+  CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    ticket_number INTEGER NOT NULL,
+    status TEXT DEFAULT 'open',
+    claimed_by TEXT,
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    closed_at TEXT
+  );
+  CREATE TABLE IF NOT EXISTS statistics_channels (
+    guild_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    PRIMARY KEY (guild_id, type)
+  );
 `);
+
+// Migration: add new columns to existing guilds table if they don't exist
+const guildCols = db.prepare("PRAGMA table_info(guilds)").all().map(c => c.name);
+const newCols = [
+  ['welcome_channel',   'TEXT'],
+  ['welcome_message',   "TEXT DEFAULT 'Bienvenue {user} sur **{server}** !'"],
+  ['welcome_embed',     'INTEGER DEFAULT 1'],
+  ['welcome_color',     "TEXT DEFAULT '#5865F2'"],
+  ['welcome_title',     "TEXT DEFAULT 'Bienvenue !'"],
+  ['welcome_avatar',    'INTEGER DEFAULT 1'],
+  ['ticket_channel',    'TEXT'],
+  ['ticket_staff_role', 'TEXT'],
+  ['ticket_category',   'TEXT'],
+  ['ticket_count',      'INTEGER DEFAULT 0'],
+];
+for (const [col, type] of newCols) {
+  if (!guildCols.includes(col)) {
+    db.prepare(`ALTER TABLE guilds ADD COLUMN ${col} ${type}`).run();
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  DATABASE HELPERS
 // ═══════════════════════════════════════════════════════════════
 const dbHelpers = {
-  // Guild config
+  // ── Guild ──────────────────────────────────────────────────
   getGuild(guildId) {
     let row = db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId);
     if (!row) {
@@ -131,7 +168,8 @@ const dbHelpers = {
     const values = keys.map(k => data[k]);
     db.prepare(`UPDATE guilds SET ${sets} WHERE guild_id = ?`).run(...values, guildId);
   },
-  // Reaction roles
+
+  // ── Reaction Roles ─────────────────────────────────────────
   addReactionRole(guildId, channelId, messageId, emoji, roleId) {
     db.prepare('INSERT OR REPLACE INTO reaction_roles (guild_id, channel_id, message_id, emoji, role_id) VALUES (?, ?, ?, ?, ?)')
       .run(guildId, channelId, messageId, emoji, roleId);
@@ -145,7 +183,8 @@ const dbHelpers = {
   removeReactionRole(messageId, emoji) {
     db.prepare('DELETE FROM reaction_roles WHERE message_id = ? AND emoji = ?').run(messageId, emoji);
   },
-  // Warnings
+
+  // ── Warnings ───────────────────────────────────────────────
   addWarning(guildId, userId, modId, reason) {
     db.prepare('INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES (?, ?, ?, ?)')
       .run(guildId, userId, modId, reason);
@@ -157,7 +196,8 @@ const dbHelpers = {
   clearWarnings(guildId, userId) {
     db.prepare('DELETE FROM warnings WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
   },
-  // Leveling
+
+  // ── Leveling ───────────────────────────────────────────────
   getLevel(guildId, userId) {
     let row = db.prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
     if (!row) {
@@ -183,7 +223,8 @@ const dbHelpers = {
   getLeaderboard(guildId, limit = 10) {
     return db.prepare('SELECT * FROM levels WHERE guild_id = ? ORDER BY level DESC, xp DESC LIMIT ?').all(guildId, limit);
   },
-  // Economy
+
+  // ── Economy ────────────────────────────────────────────────
   getBalance(guildId, userId) {
     let row = db.prepare('SELECT * FROM economy WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
     if (!row) {
@@ -200,12 +241,11 @@ const dbHelpers = {
     const eco = this.getBalance(guildId, userId);
     const now = new Date();
     if (eco.last_daily) {
-      const last = new Date(eco.last_daily);
-      const diff = now - last;
-      if (diff < 24 * 60 * 60 * 1000) {
-        const remaining = 24 * 60 * 60 * 1000 - diff;
-        const hours = Math.floor(remaining / (60 * 60 * 1000));
-        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+      const diff = now - new Date(eco.last_daily);
+      if (diff < 86400000) {
+        const remaining = 86400000 - diff;
+        const hours = Math.floor(remaining / 3600000);
+        const minutes = Math.floor((remaining % 3600000) / 60000);
         return { success: false, remaining: `${hours}h ${minutes}m` };
       }
     }
@@ -214,7 +254,8 @@ const dbHelpers = {
       .run(reward, now.toISOString(), guildId, userId);
     return { success: true, reward, newBalance: eco.balance + reward };
   },
-  // Captcha
+
+  // ── Captcha ────────────────────────────────────────────────
   setCaptcha(guildId, userId, code) {
     db.prepare('INSERT OR REPLACE INTO captcha_pending (guild_id, user_id, code, attempts) VALUES (?, ?, ?, 0)')
       .run(guildId, userId, code);
@@ -223,18 +264,22 @@ const dbHelpers = {
     return db.prepare('SELECT * FROM captcha_pending WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
   },
   incrementCaptchaAttempt(guildId, userId) {
-    db.prepare('UPDATE captcha_pending SET attempts = attempts + 1 WHERE guild_id = ? AND user_id = ?')
-      .run(guildId, userId);
+    db.prepare('UPDATE captcha_pending SET attempts = attempts + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
   },
   removeCaptcha(guildId, userId) {
     db.prepare('DELETE FROM captcha_pending WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
   },
-  // Mod logs
+
+  // ── Mod Logs ───────────────────────────────────────────────
   addModLog(guildId, action, targetId, modId, reason) {
     db.prepare('INSERT INTO mod_logs (guild_id, action, target_id, moderator_id, reason) VALUES (?, ?, ?, ?, ?)')
       .run(guildId, action, targetId, modId, reason);
   },
-  // Mutes
+  getModLogs(guildId, limit = 20) {
+    return db.prepare('SELECT * FROM mod_logs WHERE guild_id = ? ORDER BY created_at DESC LIMIT ?').all(guildId, limit);
+  },
+
+  // ── Mutes ──────────────────────────────────────────────────
   addMute(guildId, userId, unmuteAt) {
     db.prepare('INSERT OR REPLACE INTO mutes (guild_id, user_id, unmute_at) VALUES (?, ?, ?)').run(guildId, userId, unmuteAt);
   },
@@ -244,7 +289,8 @@ const dbHelpers = {
   getExpiredMutes() {
     return db.prepare("SELECT * FROM mutes WHERE unmute_at <= datetime('now')").all();
   },
-  // Giveaways
+
+  // ── Giveaways ──────────────────────────────────────────────
   createGiveaway(guildId, channelId, messageId, prize, winnerCount, endTime, hostId) {
     const info = db.prepare('INSERT INTO giveaways (guild_id, channel_id, message_id, prize, winner_count, end_time, host_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(guildId, channelId, messageId, prize, winnerCount, endTime, hostId);
@@ -262,142 +308,161 @@ const dbHelpers = {
   endGiveaway(giveawayId) {
     db.prepare('UPDATE giveaways SET ended = 1 WHERE id = ?').run(giveawayId);
   },
-  // Modules
+
+  // ── Modules ────────────────────────────────────────────────
   isModuleEnabled(guildId, moduleName) {
     const row = db.prepare('SELECT enabled FROM modules WHERE guild_id = ? AND module_name = ?').get(guildId, moduleName);
-    return row ? row.enabled === 1 : true; // enabled by default
+    return row ? row.enabled === 1 : true;
   },
   setModule(guildId, moduleName, enabled) {
     db.prepare('INSERT OR REPLACE INTO modules (guild_id, module_name, enabled) VALUES (?, ?, ?)').run(guildId, moduleName, enabled ? 1 : 0);
   },
+
+  // ── Tickets ────────────────────────────────────────────────
+  createTicket(guildId, channelId, userId, ticketNumber, reason) {
+    const info = db.prepare('INSERT INTO tickets (guild_id, channel_id, user_id, ticket_number, reason) VALUES (?, ?, ?, ?, ?)')
+      .run(guildId, channelId, userId, ticketNumber, reason || null);
+    // Increment counter
+    db.prepare('UPDATE guilds SET ticket_count = ticket_count + 1 WHERE guild_id = ?').run(guildId);
+    return info.lastInsertRowid;
+  },
+  getTicketByChannel(channelId) {
+    return db.prepare('SELECT * FROM tickets WHERE channel_id = ?').get(channelId);
+  },
+  getOpenTickets(guildId) {
+    return db.prepare("SELECT * FROM tickets WHERE guild_id = ? AND status = 'open' ORDER BY created_at DESC").all(guildId);
+  },
+  closeTicket(channelId) {
+    db.prepare("UPDATE tickets SET status = 'closed', closed_at = datetime('now') WHERE channel_id = ?").run(channelId);
+  },
+  claimTicket(channelId, modId) {
+    db.prepare("UPDATE tickets SET claimed_by = ? WHERE channel_id = ?").run(modId, channelId);
+  },
+  getTicketCount(guildId) {
+    const row = db.prepare('SELECT ticket_count FROM guilds WHERE guild_id = ?').get(guildId);
+    return row?.ticket_count || 0;
+  },
+
+  // ── Statistics Channels ────────────────────────────────────
+  setStatChannel(guildId, type, channelId) {
+    db.prepare('INSERT OR REPLACE INTO statistics_channels (guild_id, type, channel_id) VALUES (?, ?, ?)').run(guildId, type, channelId);
+  },
+  getStatChannels(guildId) {
+    return db.prepare('SELECT * FROM statistics_channels WHERE guild_id = ?').all(guildId);
+  },
+  getAllStatChannels() {
+    return db.prepare('SELECT * FROM statistics_channels').all();
+  },
 };
+
 // ═══════════════════════════════════════════════════════════════
 //  XP CALCULATOR
 // ═══════════════════════════════════════════════════════════════
 function getRequiredXP(level) {
   return 5 * (level * level) + 50 * level + 100;
 }
+
 // ═══════════════════════════════════════════════════════════════
 //  CAPTCHA GENERATOR
 // ═══════════════════════════════════════════════════════════════
 function generateCaptchaCode(length = 5) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   let code = '';
-  for (let i = 0; i < length; i++) {
-    code += chars.charAt(crypto.randomInt(chars.length));
-  }
+  for (let i = 0; i < length; i++) code += chars.charAt(crypto.randomInt(chars.length));
   return code;
 }
 function generateCaptchaImage(code) {
-  const width = 280;
-  const height = 100;
+  const width = 280, height = 100;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
-  // Background gradient
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, '#1a1a2e');
   gradient.addColorStop(1, '#16213e');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-  // Noise lines
   for (let i = 0; i < 8; i++) {
-    ctx.strokeStyle = `rgba(${crypto.randomInt(100, 200)}, ${crypto.randomInt(100, 200)}, ${crypto.randomInt(100, 200)}, 0.4)`;
+    ctx.strokeStyle = `rgba(${crypto.randomInt(100, 200)},${crypto.randomInt(100, 200)},${crypto.randomInt(100, 200)},0.4)`;
     ctx.lineWidth = 1 + Math.random();
     ctx.beginPath();
     ctx.moveTo(crypto.randomInt(width), crypto.randomInt(height));
     ctx.lineTo(crypto.randomInt(width), crypto.randomInt(height));
     ctx.stroke();
   }
-  // Noise dots
   for (let i = 0; i < 80; i++) {
-    ctx.fillStyle = `rgba(${crypto.randomInt(150, 255)}, ${crypto.randomInt(150, 255)}, ${crypto.randomInt(150, 255)}, 0.3)`;
+    ctx.fillStyle = `rgba(${crypto.randomInt(150, 255)},${crypto.randomInt(150, 255)},${crypto.randomInt(150, 255)},0.3)`;
     ctx.beginPath();
     ctx.arc(crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(1, 3), 0, Math.PI * 2);
     ctx.fill();
   }
-  // Draw text
   const fonts = ['bold 36px Arial', 'bold 38px Courier', 'bold 34px Georgia', 'bold 40px Verdana'];
-  const colors = ['#e94560', '#0f3460', '#533483', '#e94560', '#00b4d8', '#ff6b6b', '#ffd93d'];
+  const colors = ['#e94560', '#00b4d8', '#ff6b6b', '#ffd93d', '#a8ff78', '#f47fff'];
   const startX = 25;
   const charWidth = (width - 50) / code.length;
   for (let i = 0; i < code.length; i++) {
     ctx.save();
     ctx.font = fonts[crypto.randomInt(fonts.length)];
     ctx.fillStyle = colors[crypto.randomInt(colors.length)];
-    const x = startX + i * charWidth + crypto.randomInt(-5, 5);
-    const y = 55 + crypto.randomInt(-10, 10);
-    const angle = (Math.random() - 0.5) * 0.4;
-    ctx.translate(x, y);
-    ctx.rotate(angle);
+    ctx.translate(startX + i * charWidth + crypto.randomInt(-5, 5), 55 + crypto.randomInt(-10, 10));
+    ctx.rotate((Math.random() - 0.5) * 0.4);
     ctx.fillText(code[i], 0, 0);
     ctx.restore();
   }
-  // Extra distortion lines over text
   for (let i = 0; i < 3; i++) {
-    ctx.strokeStyle = `rgba(${crypto.randomInt(100, 255)}, ${crypto.randomInt(100, 255)}, ${crypto.randomInt(100, 255)}, 0.5)`;
+    ctx.strokeStyle = `rgba(${crypto.randomInt(100, 255)},${crypto.randomInt(100, 255)},${crypto.randomInt(100, 255)},0.5)`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(crypto.randomInt(width), crypto.randomInt(height));
-    ctx.bezierCurveTo(
-      crypto.randomInt(width), crypto.randomInt(height),
-      crypto.randomInt(width), crypto.randomInt(height),
-      crypto.randomInt(width), crypto.randomInt(height)
-    );
+    ctx.bezierCurveTo(crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(width), crypto.randomInt(height));
     ctx.stroke();
   }
   return canvas.toBuffer('image/png');
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  EMBED COLORS
+//  COLORS
 // ═══════════════════════════════════════════════════════════════
 const Colors = {
-  PRIMARY: 0x5865F2,    // Bleu Discord
-  SUCCESS: 0x57F287,    // Vert
-  WARNING: 0xFEE75C,    // Jaune
-  ERROR: 0xED4245,      // Rouge
-  INFO: 0x5865F2,       // Bleu
-  PREMIUM: 0xF47FFF,    // Rose
-  MODERATION: 0xFFA500, // Orange
+  PRIMARY:    0x5865F2,
+  SUCCESS:    0x57F287,
+  WARNING:    0xFEE75C,
+  ERROR:      0xED4245,
+  INFO:       0x5865F2,
+  PREMIUM:    0xF47FFF,
+  MODERATION: 0xFFA500,
 };
+
 // ═══════════════════════════════════════════════════════════════
-//  ANTI-SPAM TRACKER
+//  ANTI-SPAM
 // ═══════════════════════════════════════════════════════════════
 const spamTracker = new Map();
 function checkSpam(userId, guildId) {
   const key = `${guildId}-${userId}`;
   const now = Date.now();
-  if (!spamTracker.has(key)) {
-    spamTracker.set(key, []);
-  }
+  if (!spamTracker.has(key)) spamTracker.set(key, []);
   const timestamps = spamTracker.get(key);
   timestamps.push(now);
-  // Keep only last 10 seconds
   const filtered = timestamps.filter(t => now - t < 10000);
   spamTracker.set(key, filtered);
-  // 5+ messages in 10 seconds = spam
   return filtered.length >= 5;
 }
-// Clean spam tracker every 60 seconds
 setInterval(() => {
   const now = Date.now();
-  for (const [key, timestamps] of spamTracker) {
-    const filtered = timestamps.filter(t => now - t < 10000);
-    if (filtered.length === 0) spamTracker.delete(key);
-    else spamTracker.set(key, filtered);
+  for (const [key, ts] of spamTracker) {
+    const f = ts.filter(t => now - t < 10000);
+    if (f.length === 0) spamTracker.delete(key);
+    else spamTracker.set(key, f);
   }
 }, 60000);
+
 // ═══════════════════════════════════════════════════════════════
-//  BAD WORDS FILTER
+//  BAD WORDS
 // ═══════════════════════════════════════════════════════════════
-const defaultBadWords = [
-  'connard', 'connasse', 'enculé', 'putain', 'merde',
-  'salope', 'pute', 'nique', 'fdp', 'ntm', 'tg',
-  'bastard', 'bitch', 'fuck', 'shit', 'asshole',
-];
+const defaultBadWords = ['connard','connasse','enculé','putain','merde','salope','pute','nique','fdp','ntm','tg','bastard','bitch','fuck','shit','asshole'];
 function containsBadWord(content) {
   const lower = content.toLowerCase();
-  return defaultBadWords.some(word => lower.includes(word));
+  return defaultBadWords.some(w => lower.includes(w));
 }
+
 // ═══════════════════════════════════════════════════════════════
 //  DURATION PARSER
 // ═══════════════════════════════════════════════════════════════
@@ -419,9 +484,20 @@ function formatDuration(ms) {
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
   return `${seconds}s`;
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTS
+//  WELCOME MESSAGE BUILDER
 // ═══════════════════════════════════════════════════════════════
+function buildWelcomeMessage(config, member) {
+  const msg = (config.welcome_message || 'Bienvenue {user} !')
+    .replace(/{user}/g, member.toString())
+    .replace(/{tag}/g, member.user.tag)
+    .replace(/{username}/g, member.user.username)
+    .replace(/{server}/g, member.guild.name)
+    .replace(/{count}/g, member.guild.memberCount.toString());
+  return msg;
+}
+
 module.exports = {
   db,
   dbHelpers,
@@ -433,4 +509,5 @@ module.exports = {
   containsBadWord,
   parseDuration,
   formatDuration,
+  buildWelcomeMessage,
 };
