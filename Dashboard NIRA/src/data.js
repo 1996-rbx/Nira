@@ -146,20 +146,21 @@ function buildAppPayload() {
 
 function generateFallbackGuildMetrics(guild, metricsFile) {
   const seed = hashString(guild.id);
-  const commands = 4500 + (seed % 85000);
-  const activeMembers = 120 + (seed % 2800);
-  const retention = 65 + (seed % 28);
+  const demoTick = Number(metricsFile.demoTick || 0);
+  const liveSeed = hashString(`${guild.id}:${demoTick}`);
+  const commands = 4500 + (seed % 85000) + demoTick * (2 + (seed % 4));
+  const activeMembers = 120 + (seed % 2800) + ((liveSeed % 36) - 12);
+  const retention = Math.min(96, Math.max(62, 65 + (seed % 28) + ((liveSeed % 5) - 2)));
   const uptime = 98.2 + ((seed % 15) / 10);
-  const latencyMs = 38 + (seed % 65);
-  const conversionRate = 18 + (seed % 34);
+  const latencyMs = 38 + ((seed + liveSeed) % 28);
+  const conversionRate = Math.min(72, Math.max(12, 18 + (seed % 34) + ((liveSeed % 5) - 2)));
   const activities = metricsFile.recentActivity || [];
 
   return {
     commands,
     activeMembers,
     conversionRate,
-    lastCommandAt:
-      activities[seed % Math.max(activities.length, 1)]?.timestamp || new Date().toISOString(),
+    lastCommandAt: activities[0]?.timestamp || new Date().toISOString(),
     latencyMs,
     modulesEnabled: 4 + (seed % 5),
     retention,

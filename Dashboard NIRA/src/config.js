@@ -46,6 +46,7 @@ const publicBaseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:3000";
 export const config = {
   appName: process.env.APP_NAME || "Discord Dashboard",
   cookieName: "nira_session",
+  demoLiveEnabled: process.env.DEMO_LIVE_MODE !== "false",
   oauthStateCookieName: "nira_oauth_state",
   dataFilePath: path.resolve(process.cwd(), "data", "metrics.json"),
   dashboardSharedSecret: process.env.LIVE_METRICS_TOKEN || "",
@@ -56,7 +57,7 @@ export const config = {
   liveDataFilePath: path.resolve(process.cwd(), "data", "live-metrics.json"),
   liveMetricsTimeoutMs: Number.parseInt(process.env.LIVE_METRICS_TIMEOUT_MS || "4000", 10),
   liveMetricsUrl: process.env.LIVE_METRICS_URL || "",
-  liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "10000", 10),
+  liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "2500", 10),
   port: Number.parseInt(process.env.PORT || "3000", 10),
   publicBaseUrl,
   redirectUri: new URL("/auth/discord/callback", publicBaseUrl).toString(),
