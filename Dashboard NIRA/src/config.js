@@ -48,11 +48,14 @@ export const config = {
   cookieName: "nira_session",
   oauthStateCookieName: "nira_oauth_state",
   dataFilePath: path.resolve(process.cwd(), "data", "metrics.json"),
+  dashboardSharedSecret: process.env.LIVE_METRICS_TOKEN || "",
   discordApiBaseUrl: "https://discord.com/api/v10",
   discordBotToken: process.env.DISCORD_BOT_TOKEN || "",
   discordClientId: process.env.DISCORD_CLIENT_ID || "",
   discordClientSecret: process.env.DISCORD_CLIENT_SECRET || "",
   liveDataFilePath: path.resolve(process.cwd(), "data", "live-metrics.json"),
+  liveMetricsTimeoutMs: Number.parseInt(process.env.LIVE_METRICS_TIMEOUT_MS || "4000", 10),
+  liveMetricsUrl: process.env.LIVE_METRICS_URL || "",
   liveRefreshMs: Number.parseInt(process.env.LIVE_REFRESH_MS || "10000", 10),
   port: Number.parseInt(process.env.PORT || "3000", 10),
   publicBaseUrl,
@@ -63,6 +66,12 @@ export const config = {
 
 export function getSetupWarnings() {
   const warnings = [];
+
+  if (!config.liveMetricsUrl) {
+    warnings.push(
+      "Le dashboard lit encore data/live-metrics.json en local. Sur Railway, configure LIVE_METRICS_URL pour recuperer les vraies stats du bot.",
+    );
+  }
 
   if (!config.discordClientId || !config.discordClientSecret) {
     warnings.push(

@@ -33,8 +33,18 @@ function renderOauth(session) {
   const originMatches = configuredOrigin === browserOrigin;
   const discordReady = session.app.discord.clientConfigured;
   const botReady = session.app.discord.botConfigured;
+  const remoteMode = session.app.metricsSource?.mode === "remote";
+  const remoteHealthy = session.app.metricsSource?.remoteHealthy;
 
   elements.oauthStatus.innerHTML = [
+    createInfoCard(
+      "0. Source des compteurs",
+      remoteMode
+        ? remoteHealthy === false
+          ? "Le dashboard tente bien de lire les stats du bot a distance, mais la source live ne repond pas encore."
+          : "Le dashboard lit les stats du bot depuis une source distante compatible Railway."
+        : "Le dashboard lit encore data/live-metrics.json en local. Sur Railway, configure LIVE_METRICS_URL pour afficher les vraies stats.",
+    ),
     createInfoCard(
       "1. Redirect URI Discord",
       "Dans Discord Developer Portal > OAuth2 > Redirects, ajoute exactement cette URL.",
@@ -64,7 +74,7 @@ function renderOauth(session) {
 }
 
 function renderLiveSample() {
-  elements.liveFilePath.textContent = "data/live-metrics.json";
+  elements.liveFilePath.textContent = "data/live-metrics.json ou LIVE_METRICS_URL";
   elements.liveSample.textContent = JSON.stringify(
     {
       overview: {

@@ -2,10 +2,10 @@
   "name": "nira-bot",
   "version": "1.0.0",
   "description": "Nira - Bot Discord multifonction avance",
-  "main": "index.js",
+  "main": "boot.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node boot.js",
+    "dev": "nodemon boot.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -16,6 +16,6 @@
     "nodemon": "^3.1.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   }
 }

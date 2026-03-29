@@ -92,7 +92,7 @@ async function handleDiscordLogin(response) {
 
 async function handleDiscordCallback(request, response) {
   if (!isDiscordAuthConfigured()) {
-    sendText(response, 503, "Configuration OAuth Discord incomplète.");
+    sendText(response, 503, "Configuration OAuth Discord incomplÃ¨te.");
     return;
   }
 
@@ -103,7 +103,7 @@ async function handleDiscordCallback(request, response) {
   const expectedState = verifySignedValue(cookies[config.oauthStateCookieName]);
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    sendText(response, 400, "Le paramètre state Discord est invalide ou expiré.");
+    sendText(response, 400, "Le paramÃ¨tre state Discord est invalide ou expirÃ©.");
     return;
   }
 
@@ -149,13 +149,13 @@ async function handleDashboard(request, response) {
   const { guilds, session } = await resolveSessionContext(request);
   const selectedGuildId = parseSelectedGuildId(request);
 
-  sendJson(response, 200, getDashboardPayload(session, guilds, selectedGuildId));
+  sendJson(response, 200, await getDashboardPayload(session, guilds, selectedGuildId));
 }
 
 export function createAppServer() {
   return http.createServer(async (request, response) => {
     if (!request.url || !request.method) {
-      sendText(response, 400, "Requête invalide.");
+      sendText(response, 400, "RequÃªte invalide.");
       return;
     }
 

@@ -3,6 +3,11 @@ import { config, getSetupWarnings } from "./config.js";
 import { buildDiscordAvatarUrl, buildGuildIconUrl, isDiscordAuthConfigured } from "./discord.js";
 
 const fileCache = new Map();
+const remoteMetricsCache = {
+  error: null,
+  expiresAt: 0,
+  value: null
+};
 
 function readJsonFile(filePath, fallbackValue = null) {
   if (!fs.existsSync(filePath)) {
@@ -28,14 +33,68 @@ function readJsonFile(filePath, fallbackValue = null) {
   return parsedValue;
 }
 
-function readMergedMetrics() {
+async function fetchRemoteMetrics() {
+  if (!config.liveMetricsUrl) {
+    return null;
+  }
+
+  const now = Date.now();
+
+  if (remoteMetricsCache.value && remoteMetricsCache.expiresAt > now) {
+    return remoteMetricsCache.value;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.liveMetricsTimeoutMs);
+
+  try {
+    const headers = {};
+
+    if (config.dashboardSharedSecret) {
+      headers["x-dashboard-token"] = config.dashboardSharedSecret;
+    }
+
+    const response = await fetch(config.liveMetricsUrl, {
+      headers,
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Source live distante en erreur (${response.status}).`);
+    }
+
+    const payload = await response.json();
+
+    remoteMetricsCache.error = null;
+    remoteMetricsCache.expiresAt = now + Math.max(2000, Math.min(config.liveRefreshMs, 15000));
+    remoteMetricsCache.value = payload;
+
+    return payload;
+  } catch (error) {
+    remoteMetricsCache.error = error;
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function readMergedMetrics() {
   const baseMetrics = readJsonFile(config.dataFilePath, {
     guildMetrics: {},
     modules: [],
     overview: {},
     recentActivity: []
   });
-  const liveMetrics = readJsonFile(config.liveDataFilePath, {});
+  const fileMetrics = readJsonFile(config.liveDataFilePath, {});
+  let liveMetrics = fileMetrics;
+
+  if (config.liveMetricsUrl) {
+    try {
+      liveMetrics = (await fetchRemoteMetrics()) || fileMetrics;
+    } catch {
+      liveMetrics = fileMetrics;
+    }
+  }
 
   return {
     ...baseMetrics,
@@ -72,6 +131,11 @@ function buildAppPayload() {
       scopes: ["identify", "guilds"]
     },
     liveRefreshMs: config.liveRefreshMs,
+    metricsSource: {
+      mode: config.liveMetricsUrl ? "remote" : "file",
+      remoteConfigured: Boolean(config.liveMetricsUrl),
+      remoteHealthy: config.liveMetricsUrl ? remoteMetricsCache.error === null : null
+    },
     loginEnabled: isDiscordAuthConfigured(),
     logoUrl: "/assets/logo.svg",
     name: config.appName,
@@ -146,8 +210,8 @@ export function getSessionPayload(session, guilds) {
   };
 }
 
-export function getDashboardPayload(session, guilds, selectedGuildId) {
-  const metricsFile = readMergedMetrics();
+export async function getDashboardPayload(session, guilds, selectedGuildId) {
+  const metricsFile = await readMergedMetrics();
   const accessibleGuilds = guilds.map((guild) => normalizeGuildMetrics(guild, metricsFile));
   const selectedGuild =
     accessibleGuilds.find((guild) => guild.id === selectedGuildId) ||

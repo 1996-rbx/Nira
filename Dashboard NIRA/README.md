@@ -12,6 +12,7 @@ Dashboard Discord avec plusieurs pages, une connexion OAuth Discord et des compt
 - logo remplacable via `public/assets/logo.svg`
 - donnees de base dans `data/metrics.json`
 - donnees live dans `data/live-metrics.json`
+- source live distante possible via `LIVE_METRICS_URL`, pratique si le bot tourne sur Railway
 
 ## Lancer le projet
 
@@ -19,8 +20,9 @@ Dashboard Discord avec plusieurs pages, une connexion OAuth Discord et des compt
 2. Renseigne au minimum `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` et `SESSION_SECRET`
 3. Ajoute `DISCORD_BOT_TOKEN` si tu veux filtrer les serveurs ou le bot est vraiment installe
 4. Ajuste `LIVE_REFRESH_MS` si tu veux un rafraichissement plus rapide ou plus lent
-5. Lance le serveur avec `node server.js`
-6. Ouvre [http://localhost:3000](http://localhost:3000)
+5. Si ton bot tourne sur Railway, ajoute `LIVE_METRICS_URL` et `LIVE_METRICS_TOKEN`
+6. Lance le serveur avec `node server.js`
+7. Ouvre [http://localhost:3000](http://localhost:3000)
 
 ## Configuration Discord
 
@@ -40,6 +42,15 @@ Le fichier `data/metrics.json` contient :
 - `guildMetrics` pour injecter des stats reelles par serveur Discord, via leur ID
 
 Le fichier `data/live-metrics.json` peut etre reecrit regulierement par ton bot pour faire bouger les compteurs sans redemarrer le dashboard.
+
+Si le bot et le dashboard ne sont pas sur la meme machine, utilise plutot une source distante :
+
+```env
+LIVE_METRICS_URL=http://nom-du-service-bot.railway.internal:3001/api/dashboard/live
+LIVE_METRICS_TOKEN=un-secret-partage
+```
+
+Le bot doit alors exposer une route HTTP interne avec le meme token partage.
 
 Exemple :
 
