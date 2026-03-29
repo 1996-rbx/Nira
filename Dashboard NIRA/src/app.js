@@ -187,6 +187,11 @@ export function createAppServer() {
       return;
     }
 
+    if (request.method === "GET" && pathname === "/settings") {
+      sendRedirect(response, "/dashboard");
+      return;
+    }
+
     if (request.method === "GET" && serveStaticAsset(request, response)) {
       return;
     }

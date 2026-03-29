@@ -1,8 +1,7 @@
 const pageLabels = {
   activity: "Activite",
   dashboard: "Dashboard",
-  home: "Accueil",
-  settings: "Reglages"
+  home: "Accueil"
 };
 
 const guildStorageKey = "dashboardGuildId";
