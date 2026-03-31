@@ -223,6 +223,10 @@ const commands = [
     .setName('help')
     .setDescription('Voir les commandes disponibles'),
 ].map(cmd => cmd.toJSON());
+new SlashCommandBuilder()
+  .setName('statistics')
+  .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
+  .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
 // ═══════════════════════════════════════════════════════════════
 //  REGISTER COMMANDS
 // ═══════════════════════════════════════════════════════════════
