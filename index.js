@@ -1343,7 +1343,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({ content, ephemeral: true }).catch(() => {});
     }
   }
-  2. Ajouter ces helpers dans dbHelpers (utils.js):
 // ── Member Statistics ───────────────────────────────────────
 getStats(guildId, userId) {
   let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
