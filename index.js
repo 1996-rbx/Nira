@@ -1690,6 +1690,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild) return;
   const config = dbHelpers.getGuild(message.guild.id);
+  // Track message count for statistics
+  dbHelpers.incrementMessageCount(message.guild.id, message.author.id);
   // ── Auto-moderation ──
   if (config.automod_enabled && dbHelpers.isModuleEnabled(message.guild.id, 'automod')) {
     // Spam detection
