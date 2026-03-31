@@ -1836,6 +1836,25 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   }
 });
 // ═══════════════════════════════════════════════════════════════
+// VOICE STATE TRACKING (pour /statistics)
+// ═══════════════════════════════════════════════════════════════
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  const userId = newState.member?.id || oldState.member?.id;
+  const guildId = newState.guild?.id || oldState.guild?.id;
+  
+  if (!userId || !guildId) return;
+  if (newState.member?.user?.bot) return;
+  
+  // User joined a voice channel
+  if (!oldState.channelId && newState.channelId) {
+    dbHelpers.startVoiceSession(guildId, userId);
+  }
+  // User left a voice channel
+  else if (oldState.channelId && !newState.channelId) {
+    dbHelpers.endVoiceSession(guildId, userId);
+  }
+});
+// ═══════════════════════════════════════════════════════════════
 //  ERROR HANDLING
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.Error, (error) => {
