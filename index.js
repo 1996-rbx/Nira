@@ -1305,7 +1305,93 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({ content, ephemeral: true }).catch(() => {});
     }
   }
-});
+  2. Ajouter ces helpers dans dbHelpers (utils.js):
+// ── Member Statistics ───────────────────────────────────────
+getStats(guildId, userId) {
+  let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+  if (!row) {
+    db.prepare('INSERT OR IGNORE INTO member_statistics (guild_id, user_id) VALUES (?, ?)').run(guildId, userId);
+    row = { guild_id: guildId, user_id: userId, message_count: 0, voice_time: 0 };
+  }
+  return row;
+},
+incrementMessageCount(guildId, userId) {
+  this.getStats(guildId, userId);
+  db.prepare('UPDATE member_statistics SET message_count = message_count + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+},
+addVoiceTime(guildId, userId, seconds) {
+  this.getStats(guildId, userId);
+  db.prepare('UPDATE member_statistics SET voice_time = voice_time + ? WHERE guild_id = ? AND user_id = ?').run(seconds, guildId, userId);
+},
+
+// ── Voice Sessions ──────────────────────────────────────────
+startVoiceSession(guildId, userId) {
+  const now = new Date().toISOString();
+  db.prepare('INSERT OR REPLACE INTO voice_sessions (guild_id, user_id, joined_at) VALUES (?, ?, ?)').run(guildId, viserId, now);
+},
+endVoiceSession(guildId, userId) {
+  const session = db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+  if (session) {
+    const joinedAt = new Date(session.joined_at);
+    const now = new Date();
+    const seconds = Math.floor((now - joinedAt) / 1000);
+    this.addVoiceTime(guildId, userId, seconds);
+    db.prepare('DELETE FROM voice_sessions WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+    return seconds;
+  }
+  return 0;
+},
+getVoiceSession(guildId, userId) {
+  return db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+},
+3. Ajouter dans index.js - La commande slash
+Dans le tableau commands, ajoute:
+
+new SlashCommandBuilder()
+  .setName('statistics')
+  .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
+  .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
+4. Ajouter le handler de la commande dans index.js
+Dans le handler InteractionCreate, ajoute:
+
+// ── /statistics ──
+if (commandName === 'statistics') {
+  const target = options.getUser('membre') || user;
+  const stats = dbHelpers.getStats(guild.id, target.id);
+  
+  // Check for active voice session
+  const activeSession = dbHelpers.getVoiceSession(guild.id, target.id);
+  let totalVoiceTime = stats.voice_time;
+  
+  if (activeSession) {
+    const joinedAt = new Date(activeSession.joined_at);
+    const now = new Date();
+    const additionalSeconds = Math.floor((now - joinedAt) / 1000);
+    totalVoiceTime += additionalSeconds;
+  }
+  
+  // Format voice time
+  const hours = Math.floor(totalVoiceTime / 3600);
+  const minutes = Math.floor((totalVoiceTime % 3600) / 60);
+  const voiceTimeFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  
+  const embed = new EmbedBuilder()
+    .setTitle(`📊 Statistiques de ${target.username}`)
+    .setThumbnail(target.displayAvatarURL({ size: 256 }))
+    .addFields(
+      { name: '💬 Messages envoyés', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
+      { name: '🎙️ Temps en vocal', value: `**${voiceTimeFormatted}**`, inline: true },
+    )
+    .setColor(Colors.PRIMARY)
+    .setFooter({ text: `Statistiques sur ${guild.name}` })
+    .setTimestamp();
+  
+  if (activeSession) {
+    embed.addFields({ name: '🟢 Statut', value: 'Actuellement en vocal', inline: false });
+  }
+  
+  return interaction.reply({ embeds: [embed] });
+}
 // ═══════════════════════════════════════════════════════════════
 //  REACTION ROLE EVENTS
 // ═══════════════════════════════════════════════════════════════
