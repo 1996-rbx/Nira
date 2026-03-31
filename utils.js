@@ -367,7 +367,45 @@ const dbHelpers = {
   getAllStatChannels() {
     return db.prepare('SELECT * FROM statistics_channels').all();
   },
-};
+
+// ── Member Statistics ───────────────────────────────────────
+getStats(guildId, userId) {
+  let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+  if (!row) {
+    db.prepare('INSERT OR IGNORE INTO member_statistics (guild_id, user_id) VALUES (?, ?)').run(guildId, userId);
+    row = { guild_id: guildId, user_id: userId, message_count: 0, voice_time: 0 };
+  }
+  return row;
+},
+incrementMessageCount(guildId, userId) {
+  this.getStats(guildId, userId);
+  db.prepare('UPDATE member_statistics SET message_count = message_count + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+},
+addVoiceTime(guildId, userId, seconds) {
+  this.getStats(guildId, userId);
+  db.prepare('UPDATE member_statistics SET voice_time = voice_time + ? WHERE guild_id = ? AND user_id = ?').run(seconds, guildId, userId);
+},
+
+// ── Voice Sessions ──────────────────────────────────────────
+startVoiceSession(guildId, userId) {
+  const now = new Date().toISOString();
+  db.prepare('INSERT OR REPLACE INTO voice_sessions (guild_id, user_id, joined_at) VALUES (?, ?, ?)').run(guildId, viserId, now);
+},
+endVoiceSession(guildId, userId) {
+  const session = db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+  if (session) {
+    const joinedAt = new Date(session.joined_at);
+    const now = new Date();
+    const seconds = Math.floor((now - joinedAt) / 1000);
+    this.addVoiceTime(guildId, userId, seconds);
+    db.prepare('DELETE FROM voice_sessions WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+    return seconds;
+  }
+  return 0;
+},
+getVoiceSession(guildId, userId) {
+  return db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+},
 
 // ═══════════════════════════════════════════════════════════════
 //  XP CALCULATOR
