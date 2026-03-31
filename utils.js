@@ -127,6 +127,20 @@ db.exec(`
     channel_id TEXT NOT NULL,
     PRIMARY KEY (guild_id, type)
   );
+  CREATE TABLE IF NOT EXISTS member_statistics (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  message_count INTEGER DEFAULT 0,
+  voice_time INTEGER DEFAULT 0,
+  PRIMARY KEY (guild_id, user_id)
+  );
+
+CREATE TABLE IF NOT EXISTS voice_sessions (
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  joined_at TEXT NOT NULL,
+  PRIMARY KEY (guild_id, user_id)
+  );
 `);
 
 // Migration: add new columns to existing guilds table if they don't exist
