@@ -243,20 +243,16 @@ const commands = [
     .setDescription('Voir et gerer le systeme d\'economie')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
  
-  // ── Help ──
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Voir les commandes disponibles'),
  
-  // BUG FIXED: commande 'statistics' était déclarée APRÈS le .map()
-  // Elle n'était donc jamais enregistrée sur Discord.
-  // Déplacée ici, à l'intérieur du tableau, avant le .map().
   new SlashCommandBuilder()
     .setName('statistics')
     .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
     .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
  
-].map(cmd => cmd.toJSON()); // ← .map() ferme ici, APRÈS toutes les commandes
+].map(cmd => cmd.toJSON());
  
 // ═══════════════════════════════════════════════════════════════
 //  REGISTER COMMANDS
