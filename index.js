@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
-//  NIRA BOT - Bot Discord Multifonction
-//  Fichier principal : index.js
+// NIRA BOT - Bot Discord Multifonction
+// Fichier principal : index.js
 // ═══════════════════════════════════════════════════════════════
 const {
   Client, GatewayIntentBits, Partials, Collection,
@@ -15,19 +15,22 @@ const {
   generateCaptchaCode, generateCaptchaImage,
   checkSpam, containsBadWord, parseDuration, formatDuration,
 } = require('./utils');
+
 // ═══════════════════════════════════════════════════════════════
-//  CONFIGURATION
+// CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 const TOKEN = process.env.BOT_TOKEN;
 const NIRA_GUILD_ID = process.env.NIRA_GUILD_ID || '';
 const SUPPORTER_ROLE_ID = process.env.SUPPORTER_ROLE_ID || '';
 const PREMIUM_ROLE_ID = process.env.PREMIUM_ROLE_ID || '';
+
 if (!TOKEN) {
   console.error('❌ BOT_TOKEN manquant dans les variables d\'environnement.');
   process.exit(1);
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  CLIENT
+// CLIENT
 // ═══════════════════════════════════════════════════════════════
 const client = new Client({
   intents: [
@@ -38,6 +41,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildModeration,
     GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [
     Partials.Message,
@@ -46,9 +50,11 @@ const client = new Client({
     Partials.GuildMember,
   ],
 });
+
 client.cooldowns = new Collection();
+
 // ═══════════════════════════════════════════════════════════════
-//  SLASH COMMANDS DEFINITION
+// SLASH COMMANDS DEFINITION
 // ═══════════════════════════════════════════════════════════════
 const commands = [
   // ── Setup Reaction Roles ──
@@ -61,7 +67,7 @@ const commands = [
     .addStringOption(o => o.setName('message').setDescription('Le message a afficher (optionnel si image)'))
     .addChannelOption(o => o.setName('salon').setDescription('Le salon ou envoyer le message'))
     .addAttachmentOption(o => o.setName('image').setDescription('Image a joindre au message')),
- 
+
   // ── Setup Captcha ──
   new SlashCommandBuilder()
     .setName('setup-captcha')
@@ -70,7 +76,7 @@ const commands = [
     .addChannelOption(o => o.setName('salon').setDescription('Salon de verification captcha').setRequired(true))
     .addRoleOption(o => o.setName('role').setDescription('Role donne apres validation').setRequired(true))
     .addIntegerOption(o => o.setName('essais').setDescription('Nombre d\'essais max (defaut: 3)').setMinValue(1).setMaxValue(10)),
- 
+
   // ── Moderation ──
   new SlashCommandBuilder()
     .setName('ban')
@@ -78,14 +84,14 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a bannir').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du ban')),
- 
+
   new SlashCommandBuilder()
     .setName('kick')
     .setDescription('Expulser un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a expulser').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du kick')),
- 
+
   new SlashCommandBuilder()
     .setName('mute')
     .setDescription('Mute un utilisateur')
@@ -93,51 +99,51 @@ const commands = [
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a mute').setRequired(true))
     .addStringOption(o => o.setName('duree').setDescription('Duree (ex: 10m, 1h, 1d, 7j)').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du mute')),
- 
+
   new SlashCommandBuilder()
     .setName('unmute')
     .setDescription('Unmute un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a unmute').setRequired(true)),
- 
+
   new SlashCommandBuilder()
     .setName('warn')
     .setDescription('Avertir un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a avertir').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison de l\'avertissement').setRequired(true)),
- 
+
   new SlashCommandBuilder()
     .setName('warnings')
     .setDescription('Voir les avertissements d\'un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur').setRequired(true)),
- 
+
   new SlashCommandBuilder()
     .setName('clear')
     .setDescription('Supprimer des messages')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addIntegerOption(o => o.setName('nombre').setDescription('Nombre de messages a supprimer').setRequired(true).setMinValue(1).setMaxValue(100)),
- 
+
   // ── Fun & Utils ──
   new SlashCommandBuilder()
     .setName('level')
     .setDescription('Voir ton niveau et ton XP')
     .addUserOption(o => o.setName('utilisateur').setDescription('Voir le niveau d\'un autre utilisateur')),
- 
+
   new SlashCommandBuilder()
     .setName('rank')
     .setDescription('Voir le classement du serveur'),
- 
+
   new SlashCommandBuilder()
     .setName('daily')
     .setDescription('Recuperer ta recompense quotidienne'),
- 
+
   new SlashCommandBuilder()
     .setName('balance')
     .setDescription('Voir ton solde')
     .addUserOption(o => o.setName('utilisateur').setDescription('Voir le solde d\'un autre utilisateur')),
- 
+
   new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Lancer un giveaway')
@@ -146,7 +152,7 @@ const commands = [
     .addStringOption(o => o.setName('duree').setDescription('Duree (ex: 1h, 1d, 7j)').setRequired(true))
     .addIntegerOption(o => o.setName('gagnants').setDescription('Nombre de gagnants (defaut: 1)').setMinValue(1).setMaxValue(20))
     .addChannelOption(o => o.setName('salon').setDescription('Salon du giveaway')),
- 
+
   new SlashCommandBuilder()
     .setName('poll')
     .setDescription('Creer un sondage')
@@ -156,16 +162,16 @@ const commands = [
     .addStringOption(o => o.setName('option3').setDescription('Option 3'))
     .addStringOption(o => o.setName('option4').setDescription('Option 4'))
     .addStringOption(o => o.setName('option5').setDescription('Option 5')),
- 
+
   new SlashCommandBuilder()
     .setName('userinfo')
     .setDescription('Voir les informations d\'un utilisateur')
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur')),
- 
+
   new SlashCommandBuilder()
     .setName('serverinfo')
     .setDescription('Voir les informations du serveur'),
- 
+
   // ── Configuration ──
   new SlashCommandBuilder()
     .setName('config')
@@ -196,66 +202,68 @@ const commands = [
       .setDescription('Changer la langue')
       .addStringOption(o => o.setName('langue').setDescription('La langue (fr/en)').setRequired(true)
         .addChoices({ name: 'Francais', value: 'fr' }, { name: 'English', value: 'en' }))),
- 
+
   new SlashCommandBuilder()
     .setName('module')
     .setDescription('Activer/desactiver un module')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(o => o.setName('nom').setDescription('Nom du module').setRequired(true)
       .addChoices(
-        { name: 'Leveling',          value: 'leveling' },
-        { name: 'Economie',          value: 'economy'  },
-        { name: 'Auto-moderation',   value: 'automod'  },
-        { name: 'Anti-raid',         value: 'antiraid' },
-        { name: 'Fun',               value: 'fun'      },
-        { name: 'Logs',              value: 'logs'     },
+        { name: 'Leveling', value: 'leveling' },
+        { name: 'Economie', value: 'economy' },
+        { name: 'Auto-moderation', value: 'automod' },
+        { name: 'Anti-raid', value: 'antiraid' },
+        { name: 'Fun', value: 'fun' },
+        { name: 'Logs', value: 'logs' },
       ))
     .addBooleanOption(o => o.setName('activer').setDescription('Activer ou desactiver').setRequired(true)),
- 
+
   // ── System Management Commands ──
   new SlashCommandBuilder()
     .setName('captcha')
     .setDescription('Voir et gerer le systeme de captcha')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
- 
+
   new SlashCommandBuilder()
     .setName('reaction-roles')
     .setDescription('Voir et gerer le systeme de reaction roles')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
- 
+
   new SlashCommandBuilder()
     .setName('automod')
     .setDescription('Voir et gerer le systeme d\'auto-moderation')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
- 
+
   new SlashCommandBuilder()
     .setName('antiraid')
     .setDescription('Voir et gerer le systeme anti-raid')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
- 
+
   new SlashCommandBuilder()
     .setName('leveling')
     .setDescription('Voir et gerer le systeme de niveaux')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
- 
+
   new SlashCommandBuilder()
     .setName('economie')
     .setDescription('Voir et gerer le systeme d\'economie')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
- 
+
+  // ── Help ──
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Voir les commandes disponibles'),
- 
+
+  // ── Statistics ──
   new SlashCommandBuilder()
     .setName('statistics')
     .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
     .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
- 
+
 ].map(cmd => cmd.toJSON());
- 
+
 // ═══════════════════════════════════════════════════════════════
-//  REGISTER COMMANDS
+// REGISTER COMMANDS
 // ═══════════════════════════════════════════════════════════════
 async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -267,8 +275,9 @@ async function registerCommands() {
     console.error('❌ Erreur lors de l\'enregistrement des commandes:', error);
   }
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  LOGGING HELPER
+// LOGGING HELPER
 // ═══════════════════════════════════════════════════════════════
 async function sendLog(guild, embed) {
   const config = dbHelpers.getGuild(guild.id);
@@ -281,10 +290,12 @@ async function sendLog(guild, embed) {
     // Silently ignore if log channel is unavailable
   }
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  ANTI-RAID TRACKER
+// ANTI-RAID TRACKER
 // ═══════════════════════════════════════════════════════════════
 const joinTracker = new Map();
+
 function checkRaid(guildId) {
   const now = Date.now();
   if (!joinTracker.has(guildId)) joinTracker.set(guildId, []);
@@ -292,24 +303,25 @@ function checkRaid(guildId) {
   joins.push(now);
   const recent = joins.filter(t => now - t < 10000);
   joinTracker.set(guildId, recent);
-  // 5+ joins in 10 seconds = potential raid
   return recent.length >= 5;
 }
+
 // ═══════════════════════════════════════════════════════════════
-//  READY EVENT
+// READY EVENT
 // ═══════════════════════════════════════════════════════════════
 client.once(Events.ClientReady, async () => {
   console.log(`\n✨ ${client.user.tag} est en ligne!`);
   console.log(`📊 ${client.guilds.cache.size} serveur(s)`);
   console.log(`👤 ${client.users.cache.size} utilisateur(s)\n`);
+
   client.user.setPresence({
     activities: [{ name: '/help | nira.bot', type: 3 }],
     status: 'online',
   });
+
   await registerCommands();
-  // Giveaway & mute check interval
+
   setInterval(async () => {
-    // Check expired giveaways
     const giveaways = dbHelpers.getActiveGiveaways();
     for (const gw of giveaways) {
       try {
@@ -339,14 +351,14 @@ client.once(Events.ClientReady, async () => {
               .setFooter({ text: 'Giveaway termine' })
               .setTimestamp();
             await msg.edit({ embeds: [endEmbed], components: [] });
-          } catch (_) { /* message deleted */ }
+          } catch (_) { }
         }
         dbHelpers.endGiveaway(gw.id);
       } catch (_) {
         dbHelpers.endGiveaway(gw.id);
       }
     }
-    // Check expired mutes
+
     const mutes = dbHelpers.getExpiredMutes();
     for (const mute of mutes) {
       try {
@@ -360,25 +372,26 @@ client.once(Events.ClientReady, async () => {
     }
   }, 15000);
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  INTERACTION HANDLER (SLASH COMMANDS)
+// INTERACTION HANDLER (SLASH COMMANDS)
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.InteractionCreate, async (interaction) => {
   // ── Button interactions ──
   if (interaction.isButton()) {
-    // Giveaway participation
     if (interaction.customId.startsWith('giveaway_')) {
       const giveawayId = parseInt(interaction.customId.split('_')[1]);
       dbHelpers.enterGiveaway(giveawayId, interaction.user.id);
       return interaction.reply({ content: '🎉 Tu participes au giveaway!', ephemeral: true });
     }
-    // ── System Toggle Buttons ──
+
     if (interaction.customId.startsWith('sys_toggle_')) {
       if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
         return interaction.reply({ content: '❌ Tu n\'as pas la permission.', ephemeral: true });
       }
       const system = interaction.customId.replace('sys_toggle_', '');
       const guildId = interaction.guild.id;
+
       if (system === 'captcha') {
         const config = dbHelpers.getGuild(guildId);
         const newState = config.captcha_enabled ? 0 : 1;
@@ -389,6 +402,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (system === 'automod') {
         const config = dbHelpers.getGuild(guildId);
         const wasEnabled = !!config.automod_enabled && dbHelpers.isModuleEnabled(guildId, 'automod');
@@ -405,6 +419,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (system === 'antiraid') {
         const config = dbHelpers.getGuild(guildId);
         const newState = config.antiraid_enabled ? 0 : 1;
@@ -415,6 +430,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (system === 'leveling') {
         const isEnabled = dbHelpers.isModuleEnabled(guildId, 'leveling');
         dbHelpers.setModule(guildId, 'leveling', !isEnabled);
@@ -424,6 +440,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (system === 'economy') {
         const isEnabled = dbHelpers.isModuleEnabled(guildId, 'economy');
         dbHelpers.setModule(guildId, 'economy', !isEnabled);
@@ -434,9 +451,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     }
-    // ── System Test Buttons ──
+
     if (interaction.customId.startsWith('sys_test_')) {
       const system = interaction.customId.replace('sys_test_', '');
+
       if (system === 'captcha') {
         const code = generateCaptchaCode();
         const imageBuffer = generateCaptchaImage(code);
@@ -466,6 +484,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
         return interaction.reply({ embeds: [embed], files: [attachment], components: [testButton], ephemeral: true });
       }
+
       if (system === 'reaction') {
         const embed = new EmbedBuilder()
           .setTitle('🧪 PREVIEW - Reaction Role')
@@ -485,6 +504,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setTimestamp();
         return interaction.reply({ embeds: [embed], ephemeral: true });
       }
+
       if (system === 'automod') {
         const embed = new EmbedBuilder()
           .setTitle('🧪 PREVIEW - Auto-Moderation')
@@ -510,6 +530,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setColor(Colors.INFO);
         return interaction.reply({ embeds: [embed, preview1, preview2, preview3, footer], ephemeral: true });
       }
+
       if (system === 'antiraid') {
         const embed = new EmbedBuilder()
           .setTitle('🧪 PREVIEW - Anti-Raid')
@@ -529,13 +550,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setColor(Colors.INFO);
         return interaction.reply({ embeds: [embed, logPreview, footer], ephemeral: true });
       }
+
       if (system === 'leveling') {
         const xpGain = 15 + Math.floor(Math.random() * 10);
         const embed = new EmbedBuilder()
           .setTitle('🧪 PREVIEW - Systeme de Niveaux')
-          .setDescription(
-            `Voici ce que les membres voient quand ils montent de niveau:\n`
-          )
+          .setDescription(`Voici ce que les membres voient quand ils montent de niveau:\n`)
           .setColor(Colors.PRIMARY)
           .setTimestamp();
         const levelUpPreview = new EmbedBuilder()
@@ -557,6 +577,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setColor(Colors.INFO);
         return interaction.reply({ embeds: [embed, levelUpPreview, rankPreview, footer], ephemeral: true });
       }
+
       if (system === 'economy') {
         const reward = 100 + Math.floor(Math.random() * 50);
         const embed = new EmbedBuilder()
@@ -578,15 +599,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setColor(Colors.INFO);
         return interaction.reply({ embeds: [embed, dailyPreview, balancePreview, footer], ephemeral: true });
       }
-      // No-op button (disabled test buttons)
+
       if (system === 'noop') {
         return interaction.reply({ content: '🧪 Ceci est un bouton de test desactive.', ephemeral: true });
       }
     }
     return;
   }
+
   if (!interaction.isChatInputCommand()) return;
+
   const { commandName, guild, member, user, options, channel } = interaction;
+
   try {
     // ── /setup-reaction ──
     if (commandName === 'setup-reaction') {
@@ -595,33 +619,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const messageText = options.getString('message');
       const targetChannel = options.getChannel('salon') || channel;
       const image = options.getAttachment('image');
+
       if (!messageText && !image) {
         return interaction.reply({ content: '❌ Tu dois fournir au moins un **message** ou une **image**.', ephemeral: true });
       }
+
       const sendOptions = {};
       if (messageText) sendOptions.content = messageText;
       if (image) {
         sendOptions.files = [{ attachment: image.url, name: image.name }];
       }
+
       const sent = await targetChannel.send(sendOptions);
       const reactionResult = await sent.react(emoji);
-      // Store the resolved emoji identifier from the actual reaction
       const resolvedEmoji = reactionResult.emoji.id
         ? `${reactionResult.emoji.name}:${reactionResult.emoji.id}`
         : reactionResult.emoji.name;
+
       dbHelpers.addReactionRole(guild.id, targetChannel.id, sent.id, resolvedEmoji, role.id);
+
       const embed = new EmbedBuilder()
         .setTitle('✅ Reaction Role configure')
         .setDescription(`**Message:** envoye dans ${targetChannel}\n**Emoji:** ${emoji}\n**Role:** ${role}`)
         .setColor(Colors.SUCCESS)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
+
     // ── /setup-captcha ──
     if (commandName === 'setup-captcha') {
       const captchaChannel = options.getChannel('salon');
       const captchaRole = options.getRole('role');
       const retryLimit = options.getInteger('essais') || 3;
+
       dbHelpers.getGuild(guild.id);
       dbHelpers.updateGuild(guild.id, {
         captcha_enabled: 1,
@@ -629,6 +660,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         captcha_role: captchaRole.id,
         captcha_retry_limit: retryLimit,
       });
+
       const embed = new EmbedBuilder()
         .setTitle('🔐 Captcha configure')
         .setDescription(
@@ -640,24 +672,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(Colors.SUCCESS)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
+
     // ── /ban ──
     if (commandName === 'ban') {
       const target = options.getMember('utilisateur');
       const reason = options.getString('raison') || 'Aucune raison fournie';
+
       if (!target) return interaction.reply({ content: '❌ Utilisateur introuvable.', ephemeral: true });
       if (!target.bannable) return interaction.reply({ content: '❌ Je ne peux pas bannir cet utilisateur.', ephemeral: true });
       if (member.roles.highest.position <= target.roles.highest.position) {
         return interaction.reply({ content: '❌ Tu ne peux pas bannir un membre avec un role egal ou superieur.', ephemeral: true });
       }
+
       await target.ban({ reason: `${user.tag}: ${reason}` });
       dbHelpers.addModLog(guild.id, 'BAN', target.id, user.id, reason);
+
       const embed = new EmbedBuilder()
         .setTitle('🔨 Membre banni')
         .setDescription(`**Utilisateur:** ${target.user.tag}\n**Moderateur:** ${user.tag}\n**Raison:** ${reason}`)
         .setColor(Colors.ERROR)
         .setTimestamp();
+
       await interaction.reply({ embeds: [embed] });
       await sendLog(guild, new EmbedBuilder()
         .setTitle('📋 Ban')
@@ -669,22 +707,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.ERROR)
         .setTimestamp());
     }
+
     // ── /kick ──
     if (commandName === 'kick') {
       const target = options.getMember('utilisateur');
       const reason = options.getString('raison') || 'Aucune raison fournie';
+
       if (!target) return interaction.reply({ content: '❌ Utilisateur introuvable.', ephemeral: true });
       if (!target.kickable) return interaction.reply({ content: '❌ Je ne peux pas expulser cet utilisateur.', ephemeral: true });
       if (member.roles.highest.position <= target.roles.highest.position) {
         return interaction.reply({ content: '❌ Tu ne peux pas expulser un membre avec un role egal ou superieur.', ephemeral: true });
       }
+
       await target.kick(`${user.tag}: ${reason}`);
       dbHelpers.addModLog(guild.id, 'KICK', target.id, user.id, reason);
+
       const embed = new EmbedBuilder()
         .setTitle('👢 Membre expulse')
         .setDescription(`**Utilisateur:** ${target.user.tag}\n**Moderateur:** ${user.tag}\n**Raison:** ${reason}`)
         .setColor(Colors.WARNING)
         .setTimestamp();
+
       await interaction.reply({ embeds: [embed] });
       await sendLog(guild, new EmbedBuilder()
         .setTitle('📋 Kick')
@@ -696,25 +739,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.WARNING)
         .setTimestamp());
     }
+
     // ── /mute ──
     if (commandName === 'mute') {
       const target = options.getMember('utilisateur');
       const durationStr = options.getString('duree');
       const reason = options.getString('raison') || 'Aucune raison fournie';
+
       if (!target) return interaction.reply({ content: '❌ Utilisateur introuvable.', ephemeral: true });
       if (!target.moderatable) return interaction.reply({ content: '❌ Je ne peux pas mute cet utilisateur.', ephemeral: true });
+
       const duration = parseDuration(durationStr);
       if (!duration) return interaction.reply({ content: '❌ Duree invalide. Exemples: `10m`, `1h`, `1d`, `7j`', ephemeral: true });
       if (duration > 28 * 24 * 60 * 60 * 1000) return interaction.reply({ content: '❌ Duree maximale: 28 jours.', ephemeral: true });
+
       await target.timeout(duration, `${user.tag}: ${reason}`);
       const unmuteAt = new Date(Date.now() + duration).toISOString();
       dbHelpers.addMute(guild.id, target.id, unmuteAt);
       dbHelpers.addModLog(guild.id, 'MUTE', target.id, user.id, `${reason} (${formatDuration(duration)})`);
+
       const embed = new EmbedBuilder()
         .setTitle('🔇 Membre mute')
         .setDescription(`**Utilisateur:** ${target.user.tag}\n**Moderateur:** ${user.tag}\n**Duree:** ${formatDuration(duration)}\n**Raison:** ${reason}`)
         .setColor(Colors.MODERATION)
         .setTimestamp();
+
       await interaction.reply({ embeds: [embed] });
       await sendLog(guild, new EmbedBuilder()
         .setTitle('📋 Mute')
@@ -727,34 +776,42 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.MODERATION)
         .setTimestamp());
     }
+
     // ── /unmute ──
     if (commandName === 'unmute') {
       const target = options.getMember('utilisateur');
       if (!target) return interaction.reply({ content: '❌ Utilisateur introuvable.', ephemeral: true });
+
       await target.timeout(null, `Unmute par ${user.tag}`);
       dbHelpers.removeMute(guild.id, target.id);
       dbHelpers.addModLog(guild.id, 'UNMUTE', target.id, user.id, `Unmute par ${user.tag}`);
+
       const embed = new EmbedBuilder()
         .setTitle('🔊 Membre unmute')
         .setDescription(`**Utilisateur:** ${target.user.tag}\n**Moderateur:** ${user.tag}`)
         .setColor(Colors.SUCCESS)
         .setTimestamp();
+
       await interaction.reply({ embeds: [embed] });
     }
+
     // ── /warn ──
     if (commandName === 'warn') {
       const target = options.getMember('utilisateur');
       const reason = options.getString('raison');
+
       if (!target) return interaction.reply({ content: '❌ Utilisateur introuvable.', ephemeral: true });
       if (target.user.bot) return interaction.reply({ content: '❌ Impossible d\'avertir un bot.', ephemeral: true });
+
       const warnCount = dbHelpers.addWarning(guild.id, target.id, user.id, reason);
       dbHelpers.addModLog(guild.id, 'WARN', target.id, user.id, reason);
+
       const embed = new EmbedBuilder()
         .setTitle('⚠️ Avertissement')
         .setDescription(`**Utilisateur:** ${target.user.tag}\n**Moderateur:** ${user.tag}\n**Raison:** ${reason}\n**Total avertissements:** ${warnCount}`)
         .setColor(Colors.WARNING)
         .setTimestamp();
-      // Auto-actions based on warn count
+
       let autoAction = '';
       if (warnCount >= 5 && target.bannable) {
         await target.ban({ reason: '5 avertissements atteints - Ban automatique' });
@@ -765,7 +822,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
         autoAction = '\n\n🔇 **Mute automatique 1h** (3 avertissements atteints)';
         dbHelpers.addModLog(guild.id, 'AUTO-MUTE', target.id, client.user.id, '3 avertissements');
       }
+
       if (autoAction) embed.setDescription(embed.data.description + autoAction);
+
       await interaction.reply({ embeds: [embed] });
       await sendLog(guild, new EmbedBuilder()
         .setTitle('📋 Warn')
@@ -778,13 +837,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.WARNING)
         .setTimestamp());
     }
+
     // ── /warnings ──
     if (commandName === 'warnings') {
       const target = options.getUser('utilisateur');
       const warns = dbHelpers.getWarnings(guild.id, target.id);
+
       if (warns.length === 0) {
         return interaction.reply({ content: `✅ ${target.tag} n'a aucun avertissement.`, ephemeral: true });
       }
+
       const embed = new EmbedBuilder()
         .setTitle(`⚠️ Avertissements de ${target.tag}`)
         .setDescription(warns.map((w, i) =>
@@ -793,17 +855,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.WARNING)
         .setFooter({ text: `Total: ${warns.length} avertissement(s)` })
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /clear ──
     if (commandName === 'clear') {
       const amount = options.getInteger('nombre');
       const deleted = await channel.bulkDelete(amount, true);
+
       const embed = new EmbedBuilder()
         .setDescription(`🗑️ ${deleted.size} message(s) supprime(s)`)
         .setColor(Colors.SUCCESS);
+
       const reply = await interaction.reply({ embeds: [embed], fetchReply: true });
-      setTimeout(() => reply.delete().catch(() => {}), 3000);
+      setTimeout(() => reply.delete().catch(() => { }), 3000);
+
       await sendLog(guild, new EmbedBuilder()
         .setTitle('📋 Clear')
         .addFields(
@@ -814,16 +881,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.INFO)
         .setTimestamp());
     }
+
     // ── /level ──
     if (commandName === 'level') {
       if (!dbHelpers.isModuleEnabled(guild.id, 'leveling')) {
         return interaction.reply({ content: '❌ Le module de leveling est desactive.', ephemeral: true });
       }
+
       const target = options.getUser('utilisateur') || user;
       const data = dbHelpers.getLevel(guild.id, target.id);
       const required = getRequiredXP(data.level);
       const progress = Math.round((data.xp / required) * 100);
       const bar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
+
       const embed = new EmbedBuilder()
         .setTitle(`📊 Niveau de ${target.username}`)
         .setThumbnail(target.displayAvatarURL({ size: 128 }))
@@ -834,34 +904,42 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(Colors.PRIMARY)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /rank ──
     if (commandName === 'rank') {
       if (!dbHelpers.isModuleEnabled(guild.id, 'leveling')) {
         return interaction.reply({ content: '❌ Le module de leveling est desactive.', ephemeral: true });
       }
+
       const leaderboard = dbHelpers.getLeaderboard(guild.id, 10);
       if (leaderboard.length === 0) {
         return interaction.reply({ content: '📊 Aucune donnee de niveau pour ce serveur.', ephemeral: true });
       }
+
       const medals = ['🥇', '🥈', '🥉'];
       const description = leaderboard.map((entry, i) => {
         const prefix = i < 3 ? medals[i] : `**${i + 1}.**`;
         return `${prefix} <@${entry.user_id}> - Niveau **${entry.level}** (${entry.xp} XP)`;
       }).join('\n');
+
       const embed = new EmbedBuilder()
         .setTitle(`🏆 Classement - ${guild.name}`)
         .setDescription(description)
         .setColor(Colors.PRIMARY)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /daily ──
     if (commandName === 'daily') {
       if (!dbHelpers.isModuleEnabled(guild.id, 'economy')) {
         return interaction.reply({ content: '❌ Le module d\'economie est desactive.', ephemeral: true });
       }
+
       const result = dbHelpers.claimDaily(guild.id, user.id);
       if (!result.success) {
         return interaction.reply({
@@ -869,37 +947,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       const embed = new EmbedBuilder()
         .setTitle('💰 Recompense quotidienne')
         .setDescription(`Tu as recu **${result.reward}** pieces!\n💎 Nouveau solde: **${result.newBalance}** pieces`)
         .setColor(Colors.SUCCESS)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /balance ──
     if (commandName === 'balance') {
       if (!dbHelpers.isModuleEnabled(guild.id, 'economy')) {
         return interaction.reply({ content: '❌ Le module d\'economie est desactive.', ephemeral: true });
       }
+
       const target = options.getUser('utilisateur') || user;
       const eco = dbHelpers.getBalance(guild.id, target.id);
+
       const embed = new EmbedBuilder()
         .setTitle(`💰 Solde de ${target.username}`)
         .setDescription(`**${eco.balance}** pieces 💎`)
         .setThumbnail(target.displayAvatarURL({ size: 128 }))
         .setColor(Colors.PRIMARY)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /giveaway ──
     if (commandName === 'giveaway') {
       const prize = options.getString('prix');
       const durationStr = options.getString('duree');
       const winnerCount = options.getInteger('gagnants') || 1;
       const targetChannel = options.getChannel('salon') || channel;
+
       const duration = parseDuration(durationStr);
       if (!duration) return interaction.reply({ content: '❌ Duree invalide. Exemples: `1h`, `1d`, `7j`', ephemeral: true });
+
       const endTime = new Date(Date.now() + duration);
+
       const embed = new EmbedBuilder()
         .setTitle('🎉 GIVEAWAY')
         .setDescription(
@@ -911,22 +999,28 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(Colors.PRIMARY)
         .setTimestamp(endTime);
+
       const giveawayId = dbHelpers.createGiveaway(guild.id, targetChannel.id, null, prize, winnerCount, endTime.toISOString(), user.id);
+
       const button = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`giveaway_${giveawayId}`)
           .setLabel('Participer 🎉')
           .setStyle(ButtonStyle.Primary),
       );
+
       const sent = await targetChannel.send({ embeds: [embed], components: [button] });
-      // Update message ID in database
+
       const { db } = require('./utils');
       db.prepare('UPDATE giveaways SET message_id = ? WHERE id = ?').run(sent.id, giveawayId);
+
       const confirmEmbed = new EmbedBuilder()
         .setDescription(`🎉 Giveaway lance dans ${targetChannel}! Fin <t:${Math.floor(endTime.getTime() / 1000)}:R>`)
         .setColor(Colors.SUCCESS);
+
       return interaction.reply({ embeds: [confirmEmbed], ephemeral: true });
     }
+
     // ── /poll ──
     if (commandName === 'poll') {
       const question = options.getString('question');
@@ -935,24 +1029,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const opt = options.getString(`option${i}`);
         if (opt) pollOptions.push(opt);
       }
+
       const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
       const description = pollOptions.map((opt, i) => `${emojis[i]} ${opt}`).join('\n\n');
+
       const embed = new EmbedBuilder()
         .setTitle(`📊 ${question}`)
         .setDescription(description)
         .setColor(Colors.PRIMARY)
         .setFooter({ text: `Sondage par ${user.username}` })
         .setTimestamp();
+
       const sent = await channel.send({ embeds: [embed] });
       for (let i = 0; i < pollOptions.length; i++) {
         await sent.react(emojis[i]);
       }
+
       return interaction.reply({ content: '✅ Sondage cree!', ephemeral: true });
     }
+
     // ── /userinfo ──
     if (commandName === 'userinfo') {
       const target = options.getMember('utilisateur') || member;
       const targetUser = target.user;
+
       const embed = new EmbedBuilder()
         .setTitle(`👤 ${targetUser.tag}`)
         .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
@@ -966,11 +1066,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(target.displayHexColor || Colors.PRIMARY)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /serverinfo ──
     if (commandName === 'serverinfo') {
       const owner = await guild.fetchOwner();
+
       const embed = new EmbedBuilder()
         .setTitle(`🏠 ${guild.name}`)
         .setThumbnail(guild.iconURL({ size: 256 }))
@@ -987,11 +1090,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(Colors.PRIMARY)
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
+
     // ── /config ──
     if (commandName === 'config') {
       const sub = interaction.options.getSubcommand();
+
       if (sub === 'logs') {
         const logChannel = options.getChannel('salon');
         dbHelpers.getGuild(guild.id);
@@ -1003,6 +1109,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (sub === 'automod') {
         const enabled = options.getBoolean('activer');
         dbHelpers.getGuild(guild.id);
@@ -1014,6 +1121,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (sub === 'antiraid') {
         const enabled = options.getBoolean('activer');
         dbHelpers.getGuild(guild.id);
@@ -1025,6 +1133,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (sub === 'leveling') {
         const enabled = options.getBoolean('activer');
         dbHelpers.setModule(guild.id, 'leveling', enabled);
@@ -1035,6 +1144,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (sub === 'prefix') {
         const prefix = options.getString('prefixe');
         dbHelpers.getGuild(guild.id);
@@ -1046,6 +1156,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+
       if (sub === 'langue') {
         const lang = options.getString('langue');
         dbHelpers.getGuild(guild.id);
@@ -1058,6 +1169,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       }
     }
+
     // ── /module ──
     if (commandName === 'module') {
       const moduleName = options.getString('nom');
@@ -1070,12 +1182,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
     }
-    // ── /captcha ── System management
+
+    // ── /captcha ──
     if (commandName === 'captcha') {
       const config = dbHelpers.getGuild(guild.id);
       const isEnabled = !!config.captcha_enabled;
       const captchaChannel = config.captcha_channel ? `<#${config.captcha_channel}>` : 'Non defini';
       const captchaRole = config.captcha_role ? `<@&${config.captcha_role}>` : 'Non defini';
+
       const embed = new EmbedBuilder()
         .setTitle('🔐 Systeme Captcha')
         .setDescription(
@@ -1089,6 +1203,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
         .setFooter({ text: 'Utilise /setup-captcha pour configurer le salon et le role' })
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_toggle_captcha`)
@@ -1101,13 +1216,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
-    // ── /reaction-roles ── System management
+
+    // ── /reaction-roles ──
     if (commandName === 'reaction-roles') {
       const { db } = require('./utils');
       const rrList = db.prepare('SELECT * FROM reaction_roles WHERE guild_id = ?').all(guild.id);
       const count = rrList.length;
+
       let listDesc = '';
       if (count > 0) {
         listDesc = rrList.slice(0, 10).map((rr, i) =>
@@ -1117,6 +1235,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         listDesc = '*Aucun reaction role configure.*';
       }
+
       const embed = new EmbedBuilder()
         .setTitle('🔁 Systeme Reaction Roles')
         .setDescription(
@@ -1128,6 +1247,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(count > 0 ? Colors.SUCCESS : Colors.ERROR)
         .setFooter({ text: 'Utilise /setup-reaction pour ajouter un reaction role' })
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_test_reaction`)
@@ -1135,14 +1255,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
-    // ── /automod ── System management
+
+    // ── /automod ──
     if (commandName === 'automod') {
       const config = dbHelpers.getGuild(guild.id);
       const isEnabled = !!config.automod_enabled;
       const moduleEnabled = dbHelpers.isModuleEnabled(guild.id, 'automod');
       const fullyActive = isEnabled && moduleEnabled;
+
       const embed = new EmbedBuilder()
         .setTitle('🛡️ Systeme Auto-Moderation')
         .setDescription(
@@ -1155,6 +1278,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(fullyActive ? Colors.SUCCESS : Colors.ERROR)
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_toggle_automod`)
@@ -1167,12 +1291,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
-    // ── /antiraid ── System management
+
+    // ── /antiraid ──
     if (commandName === 'antiraid') {
       const config = dbHelpers.getGuild(guild.id);
       const isEnabled = !!config.antiraid_enabled;
+
       const embed = new EmbedBuilder()
         .setTitle('🛡️ Systeme Anti-Raid')
         .setDescription(
@@ -1185,6 +1312,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_toggle_antiraid`)
@@ -1197,12 +1325,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
-    // ── /leveling ── System management
+
+    // ── /leveling ──
     if (commandName === 'leveling') {
       const isEnabled = dbHelpers.isModuleEnabled(guild.id, 'leveling');
       const topUsers = dbHelpers.getLeaderboard(guild.id, 3);
+
       let topDesc = '';
       if (topUsers.length > 0) {
         const medals = ['🥇', '🥈', '🥉'];
@@ -1210,6 +1341,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         topDesc = '*Aucune donnee de niveau.*';
       }
+
       const embed = new EmbedBuilder()
         .setTitle('📊 Systeme de Niveaux')
         .setDescription(
@@ -1222,6 +1354,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_toggle_leveling`)
@@ -1234,11 +1367,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
-    // ── /economie ── System management
+
+    // ── /economie ──
     if (commandName === 'economie') {
       const isEnabled = dbHelpers.isModuleEnabled(guild.id, 'economy');
+
       const embed = new EmbedBuilder()
         .setTitle('💰 Systeme d\'Economie')
         .setDescription(
@@ -1250,6 +1386,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         )
         .setColor(isEnabled ? Colors.SUCCESS : Colors.ERROR)
         .setTimestamp();
+
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`sys_toggle_economy`)
@@ -1262,8 +1399,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🧪'),
       );
+
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
+
     // ── /help ──
     if (commandName === 'help') {
       const embed = new EmbedBuilder()
@@ -1279,6 +1418,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
               '`/antiraid` - Voir/gerer l\'anti-raid',
               '`/leveling` - Voir/gerer les niveaux',
               '`/economie` - Voir/gerer l\'economie',
+              '`/statistics` - Voir les stats d\'un membre',
             ].join('\n'),
           },
           {
@@ -1321,75 +1461,89 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setColor(Colors.PRIMARY)
         .setFooter({ text: 'Nira Bot - Professionnel, utile, moderne et style.' })
         .setTimestamp();
+
       return interaction.reply({ embeds: [embed] });
     }
-// ── /statistics ──
-if (commandName === 'statistics') {
-  const target = options.getUser('membre') || user;
-  const stats = dbHelpers.getStats(guild.id, target.id);
-  
-  const activeSession = dbHelpers.getVoiceSession(guild.id, target.id);
-  let totalVoiceTime = stats.voice_time;
-  
-  if (activeSession) {
-    const joinedAt = new Date(activeSession.joined_at);
-    const now = new Date();
-    const additionalSeconds = Math.floor((now - joinedAt) / 1000);
-    totalVoiceTime += additionalSeconds;
+
+    // ── /statistics ──
+    if (commandName === 'statistics') {
+      const target = options.getUser('membre') || user;
+      const stats = dbHelpers.getStats(guild.id, target.id);
+      const activeSession = dbHelpers.getVoiceSession(guild.id, target.id);
+      let totalVoiceTime = stats.voice_time;
+
+      if (activeSession) {
+        const joinedAt = new Date(activeSession.joined_at);
+        const now = new Date();
+        totalVoiceTime += Math.floor((now - joinedAt) / 1000);
+      }
+
+      const hours = Math.floor(totalVoiceTime / 3600);
+      const minutes = Math.floor((totalVoiceTime % 3600) / 60);
+      const voiceTimeFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 Statistiques de ${target.username}`)
+        .setThumbnail(target.displayAvatarURL({ size: 256 }))
+        .addFields(
+          { name: '💬 Messages envoyés', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
+          { name: '🎙️ Temps en vocal', value: `**${voiceTimeFormatted}**`, inline: true },
+        )
+        .setColor(Colors.PRIMARY)
+        .setFooter({ text: `Statistiques sur ${guild.name}` })
+        .setTimestamp();
+
+      if (activeSession) {
+        embed.addFields({ name: '🟢 Statut', value: 'Actuellement en vocal', inline: false });
+      }
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+  } catch (error) {
+    console.error(`❌ Erreur commande /${commandName}:`, error);
+    const content = '❌ Une erreur est survenue lors de l\'execution de la commande.';
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content, ephemeral: true }).catch(() => { });
+    } else {
+      await interaction.reply({ content, ephemeral: true }).catch(() => { });
+    }
   }
-  
-  const hours = Math.floor(totalVoiceTime / 3600);
-  const minutes = Math.floor((totalVoiceTime % 3600) / 60);
-  const voiceTimeFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-  
-  const embed = new EmbedBuilder()
-    .setTitle(`📊 Statistiques de ${target.username}`)
-    .setThumbnail(target.displayAvatarURL({ size: 256 }))
-    .addFields(
-      { name: '💬 Messages envoyés', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
-      { name: '🎙️ Temps en vocal', value: `**${voiceTimeFormatted}**`, inline: true },
-    )
-    .setColor(Colors.Primary) // ⚠️ FIX ici
-    .setFooter({ text: `Statistiques sur ${guild.name}` })
-    .setTimestamp();
-  
-  if (activeSession) {
-    embed.addFields({ name: '🟢 Statut', value: 'Actuellement en vocal', inline: false });
-  }
-  
-  return interaction.reply({ embeds: [embed] });
-}
+});
+
 // ═══════════════════════════════════════════════════════════════
-//  REACTION ROLE EVENTS
+// REACTION ROLE EVENTS
 // ═══════════════════════════════════════════════════════════════
 function normalizeEmoji(str) {
-  // Remove variation selectors, angle brackets, and normalize
-  return str.replace(/\uFE0F/g, '').replace(/^<a?:/, '').replace(/>$/, '').trim();
+  return str.replace(/\uFE0F/g, '').replace(/^<|>$/g, '').trim();
 }
+
 function findReactionRole(messageId, reactionEmoji) {
-  // Build the identifier the same way we store it
   const emojiId = reactionEmoji.id
     ? `${reactionEmoji.name}:${reactionEmoji.id}`
     : reactionEmoji.name;
-  // Try exact match first
+
   let rr = dbHelpers.getReactionRole(messageId, emojiId);
   if (rr) return rr;
-  // Fallback: get ALL reaction roles for this message and compare normalized
+
   const allRR = dbHelpers.getReactionRolesByMessage(messageId);
   if (!allRR || allRR.length === 0) return null;
+
   const normalizedInput = normalizeEmoji(emojiId);
   for (const entry of allRR) {
     const normalizedStored = normalizeEmoji(entry.emoji);
     if (normalizedStored === normalizedInput) return entry;
   }
-  // Also try matching by ID only (for custom emojis)
+
   if (reactionEmoji.id) {
     for (const entry of allRR) {
       if (entry.emoji.includes(reactionEmoji.id)) return entry;
     }
   }
+
   return null;
 }
+
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
   try {
@@ -1399,13 +1553,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     console.error('❌ Erreur fetch reaction/message:', err);
     return;
   }
-  console.log(`[ReactionRole] Reaction ajoutee: emoji="${reaction.emoji.name}" id=${reaction.emoji.id || 'none'} messageId=${reaction.message.id}`);
+
   const rr = findReactionRole(reaction.message.id, reaction.emoji);
-  if (!rr) {
-    console.log(`[ReactionRole] Aucun reaction role trouve pour ce message/emoji`);
-    return;
-  }
-  console.log(`[ReactionRole] Match trouve! role_id=${rr.role_id}`);
+  if (!rr) return;
+
   try {
     const guild = reaction.message.guild;
     if (!guild) return;
@@ -1414,13 +1565,12 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     if (role && member) {
       await member.roles.add(role);
       console.log(`[ReactionRole] ✅ Role "${role.name}" ajoute a ${user.tag}`);
-    } else {
-      console.log(`[ReactionRole] ⚠️ Role ou membre introuvable: role=${!!role} member=${!!member}`);
     }
   } catch (error) {
     console.error('❌ Erreur reaction role (add):', error);
   }
 });
+
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
   try {
@@ -1430,8 +1580,10 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     console.error('❌ Erreur fetch reaction/message:', err);
     return;
   }
+
   const rr = findReactionRole(reaction.message.id, reaction.emoji);
   if (!rr) return;
+
   try {
     const guild = reaction.message.guild;
     if (!guild) return;
@@ -1445,13 +1597,15 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     console.error('❌ Erreur reaction role (remove):', error);
   }
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  CAPTCHA SYSTEM - Member Join
+// CAPTCHA SYSTEM - Member Join
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.GuildMemberAdd, async (member) => {
   if (member.user.bot) return;
+
   const config = dbHelpers.getGuild(member.guild.id);
-  // Anti-raid check
+
   if (config.antiraid_enabled) {
     if (checkRaid(member.guild.id)) {
       try {
@@ -1462,18 +1616,21 @@ client.on(Events.GuildMemberAdd, async (member) => {
           .setColor(Colors.ERROR)
           .setTimestamp());
         return;
-      } catch (_) { /* ignore */ }
+      } catch (_) { }
     }
   }
-  // Captcha system
+
   if (config.captcha_enabled && config.captcha_channel) {
     try {
       const captchaChannel = await member.guild.channels.fetch(config.captcha_channel);
       if (!captchaChannel) return;
+
       const code = generateCaptchaCode();
       const imageBuffer = generateCaptchaImage(code);
       dbHelpers.setCaptcha(member.guild.id, member.id, code);
+
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'captcha.png' });
+
       const embed = new EmbedBuilder()
         .setTitle('🔐 Verification requise')
         .setDescription(
@@ -1486,6 +1643,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
         .setImage('attachment://captcha.png')
         .setColor(Colors.INFO)
         .setTimestamp();
+
       const button = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`captcha_verify_${member.id}`)
@@ -1493,13 +1651,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
           .setStyle(ButtonStyle.Primary)
           .setEmoji('🔐'),
       );
+
       await captchaChannel.send({
         content: `${member}`,
         embeds: [embed],
         files: [attachment],
         components: [button],
       });
-      // Auto-kick after 10 minutes
+
       setTimeout(async () => {
         const pending = dbHelpers.getCaptcha(member.guild.id, member.id);
         if (pending) {
@@ -1511,14 +1670,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
                 .setDescription(`⏰ ${member.user.tag} a ete kick (captcha expire).`)
                 .setColor(Colors.ERROR)],
             });
-          } catch (_) { /* already left */ }
+          } catch (_) { }
         }
       }, 10 * 60 * 1000);
     } catch (error) {
       console.error('❌ Erreur captcha:', error);
     }
   }
-  // Log member join
+
   await sendLog(member.guild, new EmbedBuilder()
     .setTitle('📥 Nouveau membre')
     .setDescription(`${member.user.tag} a rejoint le serveur`)
@@ -1530,19 +1689,21 @@ client.on(Events.GuildMemberAdd, async (member) => {
     .setColor(Colors.SUCCESS)
     .setTimestamp());
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  CAPTCHA BUTTON INTERACTION
+// CAPTCHA BUTTON INTERACTION
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.InteractionCreate, async (interaction) => {
-  // Captcha button
   if (interaction.isButton() && interaction.customId.startsWith('captcha_verify_')) {
     const targetUserId = interaction.customId.split('_')[2];
     if (interaction.user.id !== targetUserId) {
       return interaction.reply({ content: '❌ Ce captcha n\'est pas pour toi!', ephemeral: true });
     }
+
     const modal = new ModalBuilder()
       .setCustomId(`captcha_modal_${interaction.user.id}`)
       .setTitle('🔐 Verification Captcha');
+
     const codeInput = new TextInputBuilder()
       .setCustomId('captcha_code')
       .setLabel('Entre le code affiche dans l\'image')
@@ -1551,19 +1712,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setRequired(true)
       .setMinLength(5)
       .setMaxLength(5);
+
     modal.addComponents(new ActionRowBuilder().addComponents(codeInput));
     return interaction.showModal(modal);
   }
-  // Captcha modal submit
+
   if (interaction.isModalSubmit() && interaction.customId.startsWith('captcha_modal_')) {
     const inputCode = interaction.fields.getTextInputValue('captcha_code');
     const pending = dbHelpers.getCaptcha(interaction.guild.id, interaction.user.id);
+
     if (!pending) {
       return interaction.reply({ content: '❌ Aucun captcha en attente pour toi.', ephemeral: true });
     }
+
     const config = dbHelpers.getGuild(interaction.guild.id);
+
     if (inputCode === pending.code) {
-      // Success
       dbHelpers.removeCaptcha(interaction.guild.id, interaction.user.id);
       try {
         const role = interaction.guild.roles.cache.get(config.captcha_role);
@@ -1571,7 +1735,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const member = await interaction.guild.members.fetch(interaction.user.id);
           await member.roles.add(role);
         }
-      } catch (_) { /* role error */ }
+      } catch (_) { }
+
       return interaction.reply({
         embeds: [new EmbedBuilder()
           .setTitle('✅ Verification reussie!')
@@ -1580,15 +1745,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
     } else {
-      // Failed
       dbHelpers.incrementCaptchaAttempt(interaction.guild.id, interaction.user.id);
       const updated = dbHelpers.getCaptcha(interaction.guild.id, interaction.user.id);
+
       if (updated.attempts >= config.captcha_retry_limit) {
         dbHelpers.removeCaptcha(interaction.guild.id, interaction.user.id);
         try {
           const member = await interaction.guild.members.fetch(interaction.user.id);
           await member.kick('Echec captcha - Trop de tentatives');
-        } catch (_) { /* already gone */ }
+        } catch (_) { }
+
         return interaction.reply({
           embeds: [new EmbedBuilder()
             .setDescription('❌ Trop de tentatives echouees. Tu as ete kick.')
@@ -1596,11 +1762,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
-      // Generate new captcha
+
       const newCode = generateCaptchaCode();
       const newImage = generateCaptchaImage(newCode);
       dbHelpers.setCaptcha(interaction.guild.id, interaction.user.id, newCode);
+
       const attachment = new AttachmentBuilder(newImage, { name: 'captcha.png' });
+
       return interaction.reply({
         embeds: [new EmbedBuilder()
           .setTitle('❌ Code incorrect!')
@@ -1613,17 +1781,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  AUTO-MODERATION & XP SYSTEM (Message Create)
+// AUTO-MODERATION & XP SYSTEM (Message Create)
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild) return;
+
   const config = dbHelpers.getGuild(message.guild.id);
+
   // Track message count for statistics
   dbHelpers.incrementMessageCount(message.guild.id, message.author.id);
-  // ── Auto-moderation ──
+
   if (config.automod_enabled && dbHelpers.isModuleEnabled(message.guild.id, 'automod')) {
-    // Spam detection
     if (checkSpam(message.author.id, message.guild.id)) {
       try {
         await message.delete();
@@ -1634,7 +1804,7 @@ client.on(Events.MessageCreate, async (message) => {
             embeds: [new EmbedBuilder()
               .setDescription(`🔇 ${message.author} a ete mute 5 minutes (spam detecte).`)
               .setColor(Colors.MODERATION)],
-          }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+          }).then(msg => setTimeout(() => msg.delete().catch(() => { }), 5000));
           dbHelpers.addModLog(message.guild.id, 'AUTO-MUTE', message.author.id, message.client.user.id, 'Spam detecte');
           await sendLog(message.guild, new EmbedBuilder()
             .setTitle('🛡️ Auto-moderation')
@@ -1642,10 +1812,10 @@ client.on(Events.MessageCreate, async (message) => {
             .setColor(Colors.MODERATION)
             .setTimestamp());
         }
-      } catch (_) { /* permissions */ }
+      } catch (_) { }
       return;
     }
-    // Bad words detection
+
     if (containsBadWord(message.content)) {
       try {
         await message.delete();
@@ -1653,12 +1823,12 @@ client.on(Events.MessageCreate, async (message) => {
           embeds: [new EmbedBuilder()
             .setDescription(`⚠️ ${message.author}, ton message a ete supprime (langage inapproprie).`)
             .setColor(Colors.WARNING)],
-        }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+        }).then(msg => setTimeout(() => msg.delete().catch(() => { }), 5000));
         dbHelpers.addModLog(message.guild.id, 'AUTO-DELETE', message.author.id, message.client.user.id, 'Langage inapproprie');
-      } catch (_) { /* permissions */ }
+      } catch (_) { }
       return;
     }
-    // Link detection (basic - blocks Discord invite links from non-admins)
+
     const inviteRegex = /(discord\.gg|discordapp\.com\/invite|discord\.com\/invite)\//i;
     if (inviteRegex.test(message.content)) {
       const member = await message.guild.members.fetch(message.author.id);
@@ -1669,21 +1839,22 @@ client.on(Events.MessageCreate, async (message) => {
             embeds: [new EmbedBuilder()
               .setDescription(`⚠️ ${message.author}, les liens d'invitation ne sont pas autorises.`)
               .setColor(Colors.WARNING)],
-          }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
-        } catch (_) { /* permissions */ }
+          }).then(msg => setTimeout(() => msg.delete().catch(() => { }), 5000));
+        } catch (_) { }
         return;
       }
     }
   }
-  // ── XP System ──
+
   if (dbHelpers.isModuleEnabled(message.guild.id, 'leveling')) {
     const data = dbHelpers.getLevel(message.guild.id, message.author.id);
     const now = Date.now();
     const lastMsg = data.last_message ? new Date(data.last_message).getTime() : 0;
-    // Cooldown: 60 seconds between XP gains
+
     if (now - lastMsg >= 60000) {
-      const xpGain = 15 + Math.floor(Math.random() * 10); // 15-24 XP
+      const xpGain = 15 + Math.floor(Math.random() * 10);
       const result = dbHelpers.addXP(message.guild.id, message.author.id, xpGain);
+
       if (result.leveledUp) {
         const embed = new EmbedBuilder()
           .setTitle('🎉 Level Up!')
@@ -1691,16 +1862,19 @@ client.on(Events.MessageCreate, async (message) => {
           .setColor(Colors.SUCCESS)
           .setThumbnail(message.author.displayAvatarURL({ size: 128 }))
           .setTimestamp();
-        await message.channel.send({ embeds: [embed] }).catch(() => {});
+
+        await message.channel.send({ embeds: [embed] }).catch(() => { });
       }
     }
   }
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  MEMBER LEAVE LOG
+// MEMBER LEAVE LOG
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.GuildMemberRemove, async (member) => {
   if (member.user.bot) return;
+
   await sendLog(member.guild, new EmbedBuilder()
     .setTitle('📤 Membre parti')
     .setDescription(`${member.user.tag} a quitte le serveur`)
@@ -1712,13 +1886,14 @@ client.on(Events.GuildMemberRemove, async (member) => {
     .setColor(Colors.ERROR)
     .setTimestamp());
 });
+
 // ═══════════════════════════════════════════════════════════════
-//  ROLE UPDATE LOG
+// ROLE UPDATE LOG
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-  // Role changes log
   const addedRoles = newMember.roles.cache.filter(r => !oldMember.roles.cache.has(r.id));
   const removedRoles = oldMember.roles.cache.filter(r => !newMember.roles.cache.has(r.id));
+
   if (addedRoles.size > 0) {
     await sendLog(newMember.guild, new EmbedBuilder()
       .setTitle('🎭 Role(s) ajoute(s)')
@@ -1726,6 +1901,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       .setColor(Colors.SUCCESS)
       .setTimestamp());
   }
+
   if (removedRoles.size > 0) {
     await sendLog(newMember.guild, new EmbedBuilder()
       .setTitle('🎭 Role(s) retire(s)')
@@ -1733,27 +1909,27 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       .setColor(Colors.ERROR)
       .setTimestamp());
   }
-  // ── Premium system (Nira server only) ──
+
   if (NIRA_GUILD_ID && newMember.guild.id === NIRA_GUILD_ID) {
-    // Check for booster (Premium)
     if (PREMIUM_ROLE_ID) {
       if (newMember.premiumSince && !oldMember.premiumSince) {
         const role = newMember.guild.roles.cache.get(PREMIUM_ROLE_ID);
-        if (role) await newMember.roles.add(role).catch(() => {});
+        if (role) await newMember.roles.add(role).catch(() => { });
       } else if (!newMember.premiumSince && oldMember.premiumSince) {
         const role = newMember.guild.roles.cache.get(PREMIUM_ROLE_ID);
-        if (role) await newMember.roles.remove(role).catch(() => {});
+        if (role) await newMember.roles.remove(role).catch(() => { });
       }
     }
   }
-  // ── Supporter system - Server tag (clan) detection ──
+
   if (SUPPORTER_ROLE_ID && !newMember.user.bot) {
     try {
-      // Fetch user profile via REST API to get clan data
       const userData = await client.rest.get(`/users/${newMember.user.id}`);
       const hasClanTag = userData.clan && userData.clan.identity_guild_id === newMember.guild.id;
       const supporterRole = await newMember.guild.roles.fetch(SUPPORTER_ROLE_ID);
+
       if (!supporterRole) return;
+
       if (hasClanTag && !newMember.roles.cache.has(SUPPORTER_ROLE_ID)) {
         await newMember.roles.add(supporterRole);
         console.log(`[Supporter] ✅ Role Supporter ajoute a ${newMember.user.tag} (tag serveur detecte)`);
@@ -1762,29 +1938,28 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         console.log(`[Supporter] ❌ Role Supporter retire de ${newMember.user.tag} (tag serveur retire)`);
       }
     } catch (err) {
-      // Silently ignore - API might not return clan data for all users
+      // Silently ignore
     }
   }
 });
+
 // ═══════════════════════════════════════════════════════════════
 // VOICE STATE TRACKING (pour /statistics)
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   const userId = newState.member?.id || oldState.member?.id;
   const guildId = newState.guild?.id || oldState.guild?.id;
-  
+
   if (!userId || !guildId) return;
   if (newState.member?.user?.bot) return;
-  
-  // User joined a voice channel
+
   if (!oldState.channelId && newState.channelId) {
     dbHelpers.startVoiceSession(guildId, userId);
-  }
-  // User left a voice channel
-  else if (oldState.channelId && !newState.channelId) {
+  } else if (oldState.channelId && !newState.channelId) {
     dbHelpers.endVoiceSession(guildId, userId);
   }
 });
+
 // ═══════════════════════════════════════════════════════════════
 // ERROR HANDLING
 // ═══════════════════════════════════════════════════════════════
@@ -1800,5 +1975,7 @@ process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught exception:', error);
 });
 
+// ═══════════════════════════════════════════════════════════════
 // LOGIN
+// ═══════════════════════════════════════════════════════════════
 client.login(TOKEN);
