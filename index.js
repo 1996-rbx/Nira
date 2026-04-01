@@ -1786,18 +1786,19 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   }
 });
 // ═══════════════════════════════════════════════════════════════
-//  ERROR HANDLING
+// ERROR HANDLING
 // ═══════════════════════════════════════════════════════════════
 client.on(Events.Error, (error) => {
   console.error('❌ Erreur Discord.js:', error);
 });
+
 process.on('unhandledRejection', (error) => {
   console.error('❌ Unhandled rejection:', error);
 });
+
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught exception:', error);
 });
-// ═══════════════════════════════════════════════════════════════
-//  LOGIN
-// ═══════════════════════════════════════════════════════════════
-client.login(TOKEN)});
+
+// LOGIN
+client.login(TOKEN);
