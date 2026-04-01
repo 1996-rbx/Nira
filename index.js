@@ -1323,60 +1323,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTimestamp();
       return interaction.reply({ embeds: [embed] });
     }
-       // ── /statistics ──
-    if (commandName === 'statistics') {
-      const target = options.getUser('membre') || user;
-      const stats = dbHelpers.getStats(guild.id, target.id);
-      
-      // Check for active voice session
-      const activeSession = dbHelpers.getVoiceSession(guild.id, target.id);
-      let totalVoiceTime = stats.voice_time;
-      
-      if (activeSession) {
-        const joinedAt = new Date(activeSession.joined_at);
-        const now = new Date();
-        const additionalSeconds = Math.floor((now - joinedAt) / 1000);
-        totalVoiceTime += additionalSeconds;
-      }
-      
-      // Format voice time
-      const hours = Math.floor(totalVoiceTime / 3600);
-      const minutes = Math.floor((totalVoiceTime % 3600) / 60);
-      const voiceTimeFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-      
-      const embed = new EmbedBuilder()
-        .setTitle(`📊 Statistiques de ${target.username}`)
-        .setThumbnail(target.displayAvatarURL({ size: 256 }))
-        .addFields(
-          { name: '💬 Messages envoyés', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
-          { name: '🎙️ Temps en vocal', value: `**${voiceTimeFormatted}**`, inline: true },
-        )
-        .setColor(Colors.PRIMARY)
-        .setFooter({ text: `Statistiques sur ${guild.name}` })
-        .setTimestamp();
-      
-      if (activeSession) {
-        embed.addFields({ name: '🟢 Statut', value: 'Actuellement en vocal', inline: false });
-      }
-      
-      return interaction.reply({ embeds: [embed] });
-    }
-  } catch (error) {
-    console.error(`❌ Erreur commande /${commandName}:`, error);
-    const content = '❌ Une erreur est survenue lors de l\'execution de la commande.';
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content, ephemeral: true }).catch(() => {});
-    } else {
-      await interaction.reply({ content, ephemeral: true }).catch(() => {});
-    }
-  }
-
-  // ── /statistics ──
+// ── /statistics ──
 if (commandName === 'statistics') {
   const target = options.getUser('membre') || user;
   const stats = dbHelpers.getStats(guild.id, target.id);
   
-  // Check for active voice session
   const activeSession = dbHelpers.getVoiceSession(guild.id, target.id);
   let totalVoiceTime = stats.voice_time;
   
@@ -1387,7 +1338,6 @@ if (commandName === 'statistics') {
     totalVoiceTime += additionalSeconds;
   }
   
-  // Format voice time
   const hours = Math.floor(totalVoiceTime / 3600);
   const minutes = Math.floor((totalVoiceTime % 3600) / 60);
   const voiceTimeFormatted = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
@@ -1399,7 +1349,7 @@ if (commandName === 'statistics') {
       { name: '💬 Messages envoyés', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
       { name: '🎙️ Temps en vocal', value: `**${voiceTimeFormatted}**`, inline: true },
     )
-    .setColor(Colors.PRIMARY)
+    .setColor(Colors.Primary) // ⚠️ FIX ici
     .setFooter({ text: `Statistiques sur ${guild.name}` })
     .setTimestamp();
   
