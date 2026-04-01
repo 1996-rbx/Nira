@@ -2,11 +2,13 @@ const { createCanvas } = require('canvas');
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
+
 // ═══════════════════════════════════════════════════════════════
 //  DATABASE
 // ═══════════════════════════════════════════════════════════════
 const db = new Database(path.join(__dirname, 'nira.db'));
 db.pragma('journal_mode = WAL');
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS guilds (
     guild_id TEXT PRIMARY KEY,
@@ -31,6 +33,7 @@ db.exec(`
     ticket_category TEXT,
     ticket_count INTEGER DEFAULT 0
   );
+
   CREATE TABLE IF NOT EXISTS reaction_roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -40,6 +43,7 @@ db.exec(`
     role_id TEXT NOT NULL,
     UNIQUE(message_id, emoji)
   );
+
   CREATE TABLE IF NOT EXISTS warnings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -48,6 +52,7 @@ db.exec(`
     reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
   CREATE TABLE IF NOT EXISTS levels (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -56,6 +61,7 @@ db.exec(`
     last_message TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (guild_id, user_id)
   );
+
   CREATE TABLE IF NOT EXISTS economy (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -63,6 +69,7 @@ db.exec(`
     last_daily TEXT,
     PRIMARY KEY (guild_id, user_id)
   );
+
   CREATE TABLE IF NOT EXISTS giveaways (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -74,12 +81,14 @@ db.exec(`
     ended INTEGER DEFAULT 0,
     host_id TEXT NOT NULL
   );
+
   CREATE TABLE IF NOT EXISTS giveaway_entries (
     giveaway_id INTEGER NOT NULL,
     user_id TEXT NOT NULL,
     PRIMARY KEY (giveaway_id, user_id),
     FOREIGN KEY (giveaway_id) REFERENCES giveaways(id)
   );
+
   CREATE TABLE IF NOT EXISTS captcha_pending (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -88,6 +97,7 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (guild_id, user_id)
   );
+
   CREATE TABLE IF NOT EXISTS mod_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -97,18 +107,21 @@ db.exec(`
     reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
   CREATE TABLE IF NOT EXISTS mutes (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     unmute_at TEXT,
     PRIMARY KEY (guild_id, user_id)
   );
+
   CREATE TABLE IF NOT EXISTS modules (
     guild_id TEXT NOT NULL,
     module_name TEXT NOT NULL,
     enabled INTEGER DEFAULT 1,
     PRIMARY KEY (guild_id, module_name)
   );
+
   CREATE TABLE IF NOT EXISTS tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
@@ -121,25 +134,27 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     closed_at TEXT
   );
+
   CREATE TABLE IF NOT EXISTS statistics_channels (
     guild_id TEXT NOT NULL,
     type TEXT NOT NULL,
     channel_id TEXT NOT NULL,
     PRIMARY KEY (guild_id, type)
   );
+
   CREATE TABLE IF NOT EXISTS member_statistics (
-  guild_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  message_count INTEGER DEFAULT 0,
-  voice_time INTEGER DEFAULT 0,
-  PRIMARY KEY (guild_id, user_id)
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    message_count INTEGER DEFAULT 0,
+    voice_time INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id)
   );
 
-CREATE TABLE IF NOT EXISTS voice_sessions (
-  guild_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  joined_at TEXT NOT NULL,
-  PRIMARY KEY (guild_id, user_id)
+  CREATE TABLE IF NOT EXISTS voice_sessions (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    joined_at TEXT NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
   );
 `);
 
@@ -167,6 +182,7 @@ for (const [col, type] of newCols) {
 //  DATABASE HELPERS
 // ═══════════════════════════════════════════════════════════════
 const dbHelpers = {
+
   // ── Guild ──────────────────────────────────────────────────
   getGuild(guildId) {
     let row = db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId);
@@ -177,8 +193,8 @@ const dbHelpers = {
     return row;
   },
   updateGuild(guildId, data) {
-    const keys = Object.keys(data);
-    const sets = keys.map(k => `${k} = ?`).join(', ');
+    const keys   = Object.keys(data);
+    const sets   = keys.map(k => `${k} = ?`).join(', ');
     const values = keys.map(k => data[k]);
     db.prepare(`UPDATE guilds SET ${sets} WHERE guild_id = ?`).run(...values, guildId);
   },
@@ -225,7 +241,7 @@ const dbHelpers = {
     const now = new Date().toISOString();
     db.prepare('UPDATE levels SET xp = xp + ?, last_message = ? WHERE guild_id = ? AND user_id = ?')
       .run(amount, now, guildId, userId);
-    const row = db.prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+    const row        = db.prepare('SELECT * FROM levels WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
     const requiredXP = getRequiredXP(row.level);
     if (row.xp >= requiredXP) {
       db.prepare('UPDATE levels SET level = level + 1, xp = xp - ? WHERE guild_id = ? AND user_id = ?')
@@ -258,7 +274,7 @@ const dbHelpers = {
       const diff = now - new Date(eco.last_daily);
       if (diff < 86400000) {
         const remaining = 86400000 - diff;
-        const hours = Math.floor(remaining / 3600000);
+        const hours   = Math.floor(remaining / 3600000);
         const minutes = Math.floor((remaining % 3600000) / 60000);
         return { success: false, remaining: `${hours}h ${minutes}m` };
       }
@@ -336,7 +352,6 @@ const dbHelpers = {
   createTicket(guildId, channelId, userId, ticketNumber, reason) {
     const info = db.prepare('INSERT INTO tickets (guild_id, channel_id, user_id, ticket_number, reason) VALUES (?, ?, ?, ?, ?)')
       .run(guildId, channelId, userId, ticketNumber, reason || null);
-    // Increment counter
     db.prepare('UPDATE guilds SET ticket_count = ticket_count + 1 WHERE guild_id = ?').run(guildId);
     return info.lastInsertRowid;
   },
@@ -368,44 +383,47 @@ const dbHelpers = {
     return db.prepare('SELECT * FROM statistics_channels').all();
   },
 
-// ── Member Statistics ───────────────────────────────────────
-getStats(guildId, userId) {
-  let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
-  if (!row) {
-    db.prepare('INSERT OR IGNORE INTO member_statistics (guild_id, user_id) VALUES (?, ?)').run(guildId, userId);
-    row = { guild_id: guildId, user_id: userId, message_count: 0, voice_time: 0 };
-  }
-  return row;
-},
-incrementMessageCount(guildId, userId) {
-  this.getStats(guildId, userId);
-  db.prepare('UPDATE member_statistics SET message_count = message_count + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
-},
-addVoiceTime(guildId, userId, seconds) {
-  this.getStats(guildId, userId);
-  db.prepare('UPDATE member_statistics SET voice_time = voice_time + ? WHERE guild_id = ? AND user_id = ?').run(seconds, guildId, userId);
-},
+  // ── Member Statistics ───────────────────────────────────────
+  getStats(guildId, userId) {
+    let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+    if (!row) {
+      db.prepare('INSERT OR IGNORE INTO member_statistics (guild_id, user_id) VALUES (?, ?)').run(guildId, userId);
+      row = { guild_id: guildId, user_id: userId, message_count: 0, voice_time: 0 };
+    }
+    return row;
+  },
+  incrementMessageCount(guildId, userId) {
+    this.getStats(guildId, userId);
+    db.prepare('UPDATE member_statistics SET message_count = message_count + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+  },
+  addVoiceTime(guildId, userId, seconds) {
+    this.getStats(guildId, userId);
+    db.prepare('UPDATE member_statistics SET voice_time = voice_time + ? WHERE guild_id = ? AND user_id = ?').run(seconds, guildId, userId);
+  },
 
-// ── Voice Sessions ──────────────────────────────────────────
-startVoiceSession(guildId, userId) {
-  const now = new Date().toISOString();
-  db.prepare('INSERT OR REPLACE INTO voice_sessions (guild_id, user_id, joined_at) VALUES (?, ?, ?)').run(guildId, viserId, now);
-},
-endVoiceSession(guildId, userId) {
-  const session = db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
-  if (session) {
-    const joinedAt = new Date(session.joined_at);
-    const now = new Date();
-    const seconds = Math.floor((now - joinedAt) / 1000);
-    this.addVoiceTime(guildId, userId, seconds);
-    db.prepare('DELETE FROM voice_sessions WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
-    return seconds;
-  }
-  return 0;
-},
-getVoiceSession(guildId, userId) {
-  return db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
-},
+  // ── Voice Sessions ──────────────────────────────────────────
+  startVoiceSession(guildId, userId) {
+    const now = new Date().toISOString();
+    // BUG FIXED: was 'viserId' (typo) — corrected to 'userId'
+    db.prepare('INSERT OR REPLACE INTO voice_sessions (guild_id, user_id, joined_at) VALUES (?, ?, ?)').run(guildId, userId, now);
+  },
+  endVoiceSession(guildId, userId) {
+    const session = db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+    if (session) {
+      const joinedAt = new Date(session.joined_at);
+      const now      = new Date();
+      const seconds  = Math.floor((now - joinedAt) / 1000);
+      this.addVoiceTime(guildId, userId, seconds);
+      db.prepare('DELETE FROM voice_sessions WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+      return seconds;
+    }
+    return 0;
+  },
+  getVoiceSession(guildId, userId) {
+    return db.prepare('SELECT * FROM voice_sessions WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+  },
+
+}; // BUG FIXED: closing brace was missing — all functions below were incorrectly inside dbHelpers
 
 // ═══════════════════════════════════════════════════════════════
 //  XP CALCULATOR
@@ -423,10 +441,11 @@ function generateCaptchaCode(length = 5) {
   for (let i = 0; i < length; i++) code += chars.charAt(crypto.randomInt(chars.length));
   return code;
 }
+
 function generateCaptchaImage(code) {
   const width = 280, height = 100;
   const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
+  const ctx    = canvas.getContext('2d');
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, '#1a1a2e');
   gradient.addColorStop(1, '#16213e');
@@ -434,7 +453,7 @@ function generateCaptchaImage(code) {
   ctx.fillRect(0, 0, width, height);
   for (let i = 0; i < 8; i++) {
     ctx.strokeStyle = `rgba(${crypto.randomInt(100, 200)},${crypto.randomInt(100, 200)},${crypto.randomInt(100, 200)},0.4)`;
-    ctx.lineWidth = 1 + Math.random();
+    ctx.lineWidth   = 1 + Math.random();
     ctx.beginPath();
     ctx.moveTo(crypto.randomInt(width), crypto.randomInt(height));
     ctx.lineTo(crypto.randomInt(width), crypto.randomInt(height));
@@ -446,13 +465,13 @@ function generateCaptchaImage(code) {
     ctx.arc(crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(1, 3), 0, Math.PI * 2);
     ctx.fill();
   }
-  const fonts = ['bold 36px Arial', 'bold 38px Courier', 'bold 34px Georgia', 'bold 40px Verdana'];
+  const fonts  = ['bold 36px Arial', 'bold 38px Courier', 'bold 34px Georgia', 'bold 40px Verdana'];
   const colors = ['#e94560', '#00b4d8', '#ff6b6b', '#ffd93d', '#a8ff78', '#f47fff'];
   const startX = 25;
   const charWidth = (width - 50) / code.length;
   for (let i = 0; i < code.length; i++) {
     ctx.save();
-    ctx.font = fonts[crypto.randomInt(fonts.length)];
+    ctx.font      = fonts[crypto.randomInt(fonts.length)];
     ctx.fillStyle = colors[crypto.randomInt(colors.length)];
     ctx.translate(startX + i * charWidth + crypto.randomInt(-5, 5), 55 + crypto.randomInt(-10, 10));
     ctx.rotate((Math.random() - 0.5) * 0.4);
@@ -461,10 +480,14 @@ function generateCaptchaImage(code) {
   }
   for (let i = 0; i < 3; i++) {
     ctx.strokeStyle = `rgba(${crypto.randomInt(100, 255)},${crypto.randomInt(100, 255)},${crypto.randomInt(100, 255)},0.5)`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth   = 1.5;
     ctx.beginPath();
     ctx.moveTo(crypto.randomInt(width), crypto.randomInt(height));
-    ctx.bezierCurveTo(crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(width), crypto.randomInt(height), crypto.randomInt(width), crypto.randomInt(height));
+    ctx.bezierCurveTo(
+      crypto.randomInt(width), crypto.randomInt(height),
+      crypto.randomInt(width), crypto.randomInt(height),
+      crypto.randomInt(width), crypto.randomInt(height)
+    );
     ctx.stroke();
   }
   return canvas.toBuffer('image/png');
@@ -522,17 +545,17 @@ function parseDuration(str) {
   const match = str.match(/^(\d+)(s|m|h|d|j)$/i);
   if (!match) return null;
   const value = parseInt(match[1]);
-  const unit = match[2].toLowerCase();
+  const unit  = match[2].toLowerCase();
   const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000, j: 86400000 };
   return value * (multipliers[unit] || 0);
 }
 function formatDuration(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  if (days > 0) return `${days}j ${hours % 24}h`;
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  const hours   = Math.floor(minutes / 60);
+  const days    = Math.floor(hours / 24);
+  if (days > 0)    return `${days}j ${hours % 24}h`;
+  if (hours > 0)   return `${hours}h ${minutes % 60}m`;
   if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
   return `${seconds}s`;
 }
@@ -542,11 +565,11 @@ function formatDuration(ms) {
 // ═══════════════════════════════════════════════════════════════
 function buildWelcomeMessage(config, member) {
   const msg = (config.welcome_message || 'Bienvenue {user} !')
-    .replace(/{user}/g, member.toString())
-    .replace(/{tag}/g, member.user.tag)
+    .replace(/{user}/g,     member.toString())
+    .replace(/{tag}/g,      member.user.tag)
     .replace(/{username}/g, member.user.username)
-    .replace(/{server}/g, member.guild.name)
-    .replace(/{count}/g, member.guild.memberCount.toString());
+    .replace(/{server}/g,   member.guild.name)
+    .replace(/{count}/g,    member.guild.memberCount.toString());
   return msg;
 }
 
