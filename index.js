@@ -61,6 +61,7 @@ const commands = [
     .addStringOption(o => o.setName('message').setDescription('Le message a afficher (optionnel si image)'))
     .addChannelOption(o => o.setName('salon').setDescription('Le salon ou envoyer le message'))
     .addAttachmentOption(o => o.setName('image').setDescription('Image a joindre au message')),
+ 
   // ── Setup Captcha ──
   new SlashCommandBuilder()
     .setName('setup-captcha')
@@ -69,6 +70,7 @@ const commands = [
     .addChannelOption(o => o.setName('salon').setDescription('Salon de verification captcha').setRequired(true))
     .addRoleOption(o => o.setName('role').setDescription('Role donne apres validation').setRequired(true))
     .addIntegerOption(o => o.setName('essais').setDescription('Nombre d\'essais max (defaut: 3)').setMinValue(1).setMaxValue(10)),
+ 
   // ── Moderation ──
   new SlashCommandBuilder()
     .setName('ban')
@@ -76,12 +78,14 @@ const commands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a bannir').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du ban')),
+ 
   new SlashCommandBuilder()
     .setName('kick')
     .setDescription('Expulser un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a expulser').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du kick')),
+ 
   new SlashCommandBuilder()
     .setName('mute')
     .setDescription('Mute un utilisateur')
@@ -89,42 +93,51 @@ const commands = [
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a mute').setRequired(true))
     .addStringOption(o => o.setName('duree').setDescription('Duree (ex: 10m, 1h, 1d, 7j)').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison du mute')),
+ 
   new SlashCommandBuilder()
     .setName('unmute')
     .setDescription('Unmute un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a unmute').setRequired(true)),
+ 
   new SlashCommandBuilder()
     .setName('warn')
     .setDescription('Avertir un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur a avertir').setRequired(true))
     .addStringOption(o => o.setName('raison').setDescription('Raison de l\'avertissement').setRequired(true)),
+ 
   new SlashCommandBuilder()
     .setName('warnings')
     .setDescription('Voir les avertissements d\'un utilisateur')
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur').setRequired(true)),
+ 
   new SlashCommandBuilder()
     .setName('clear')
     .setDescription('Supprimer des messages')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addIntegerOption(o => o.setName('nombre').setDescription('Nombre de messages a supprimer').setRequired(true).setMinValue(1).setMaxValue(100)),
+ 
   // ── Fun & Utils ──
   new SlashCommandBuilder()
     .setName('level')
     .setDescription('Voir ton niveau et ton XP')
     .addUserOption(o => o.setName('utilisateur').setDescription('Voir le niveau d\'un autre utilisateur')),
+ 
   new SlashCommandBuilder()
     .setName('rank')
     .setDescription('Voir le classement du serveur'),
+ 
   new SlashCommandBuilder()
     .setName('daily')
     .setDescription('Recuperer ta recompense quotidienne'),
+ 
   new SlashCommandBuilder()
     .setName('balance')
     .setDescription('Voir ton solde')
     .addUserOption(o => o.setName('utilisateur').setDescription('Voir le solde d\'un autre utilisateur')),
+ 
   new SlashCommandBuilder()
     .setName('giveaway')
     .setDescription('Lancer un giveaway')
@@ -133,6 +146,7 @@ const commands = [
     .addStringOption(o => o.setName('duree').setDescription('Duree (ex: 1h, 1d, 7j)').setRequired(true))
     .addIntegerOption(o => o.setName('gagnants').setDescription('Nombre de gagnants (defaut: 1)').setMinValue(1).setMaxValue(20))
     .addChannelOption(o => o.setName('salon').setDescription('Salon du giveaway')),
+ 
   new SlashCommandBuilder()
     .setName('poll')
     .setDescription('Creer un sondage')
@@ -142,13 +156,16 @@ const commands = [
     .addStringOption(o => o.setName('option3').setDescription('Option 3'))
     .addStringOption(o => o.setName('option4').setDescription('Option 4'))
     .addStringOption(o => o.setName('option5').setDescription('Option 5')),
+ 
   new SlashCommandBuilder()
     .setName('userinfo')
     .setDescription('Voir les informations d\'un utilisateur')
     .addUserOption(o => o.setName('utilisateur').setDescription('L\'utilisateur')),
+ 
   new SlashCommandBuilder()
     .setName('serverinfo')
     .setDescription('Voir les informations du serveur'),
+ 
   // ── Configuration ──
   new SlashCommandBuilder()
     .setName('config')
@@ -179,54 +196,68 @@ const commands = [
       .setDescription('Changer la langue')
       .addStringOption(o => o.setName('langue').setDescription('La langue (fr/en)').setRequired(true)
         .addChoices({ name: 'Francais', value: 'fr' }, { name: 'English', value: 'en' }))),
+ 
   new SlashCommandBuilder()
     .setName('module')
     .setDescription('Activer/desactiver un module')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addStringOption(o => o.setName('nom').setDescription('Nom du module').setRequired(true)
       .addChoices(
-        { name: 'Leveling', value: 'leveling' },
-        { name: 'Economie', value: 'economy' },
-        { name: 'Auto-moderation', value: 'automod' },
-        { name: 'Anti-raid', value: 'antiraid' },
-        { name: 'Fun', value: 'fun' },
-        { name: 'Logs', value: 'logs' },
+        { name: 'Leveling',          value: 'leveling' },
+        { name: 'Economie',          value: 'economy'  },
+        { name: 'Auto-moderation',   value: 'automod'  },
+        { name: 'Anti-raid',         value: 'antiraid' },
+        { name: 'Fun',               value: 'fun'      },
+        { name: 'Logs',              value: 'logs'     },
       ))
     .addBooleanOption(o => o.setName('activer').setDescription('Activer ou desactiver').setRequired(true)),
+ 
   // ── System Management Commands ──
   new SlashCommandBuilder()
     .setName('captcha')
     .setDescription('Voir et gerer le systeme de captcha')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ 
   new SlashCommandBuilder()
     .setName('reaction-roles')
     .setDescription('Voir et gerer le systeme de reaction roles')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
+ 
   new SlashCommandBuilder()
     .setName('automod')
     .setDescription('Voir et gerer le systeme d\'auto-moderation')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ 
   new SlashCommandBuilder()
     .setName('antiraid')
     .setDescription('Voir et gerer le systeme anti-raid')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ 
   new SlashCommandBuilder()
     .setName('leveling')
     .setDescription('Voir et gerer le systeme de niveaux')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ 
   new SlashCommandBuilder()
     .setName('economie')
     .setDescription('Voir et gerer le systeme d\'economie')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ 
   // ── Help ──
   new SlashCommandBuilder()
     .setName('help')
     .setDescription('Voir les commandes disponibles'),
-].map(cmd => cmd.toJSON());
-new SlashCommandBuilder()
-  .setName('statistics')
-  .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
-  .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
+ 
+  // BUG FIXED: commande 'statistics' était déclarée APRÈS le .map()
+  // Elle n'était donc jamais enregistrée sur Discord.
+  // Déplacée ici, à l'intérieur du tableau, avant le .map().
+  new SlashCommandBuilder()
+    .setName('statistics')
+    .setDescription('Voir les statistiques d\'un membre (messages et temps vocal)')
+    .addUserOption(o => o.setName('membre').setDescription('Le membre à consulter')),
+ 
+].map(cmd => cmd.toJSON()); // ← .map() ferme ici, APRÈS toutes les commandes
+ 
 // ═══════════════════════════════════════════════════════════════
 //  REGISTER COMMANDS
 // ═══════════════════════════════════════════════════════════════
