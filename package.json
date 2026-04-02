@@ -11,6 +11,9 @@
     "better-sqlite3": "^11.7.0",
     "canvas": "^2.11.2",
     "discord.js": "^14.16.3"
+    "@discordjs/voice": "^0.17.0",
+    "libsodium-wrappers": "^0.7.13",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
