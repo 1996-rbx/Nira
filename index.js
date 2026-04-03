@@ -17,11 +17,6 @@ const {
 } = require('./utils');
 const { connectToVoice } = require('./voice-keepalive');
 
-client.once(Events.ClientReady, async () => {
-  // ... ton code existant ...
-  connectToVoice(client); // ← cette ligne doit être là
-});
-
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
@@ -58,6 +53,11 @@ const client = new Client({
 });
 
 client.cooldowns = new Collection();
+
+client.once(Events.ClientReady, async () => {
+  console.log(`✅ Connecté en tant que ${client.user.tag}`);
+  connectToVoice(client);
+});
 
 // ═══════════════════════════════════════════════════════════════
 // SLASH COMMANDS DEFINITION
