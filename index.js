@@ -57,6 +57,18 @@ client.cooldowns = new Collection();
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Connecté en tant que ${client.user.tag}`);
   connectToVoice(client);
+  
+  const rest = new REST({ version: '10' }).setToken(TOKEN);
+  try {
+    console.log('🔄 Enregistrement global des commandes...');
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: commands }
+    );
+    console.log('✅ Commandes globales enregistrées avec succès !');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'enregistrement global des commandes :', error);
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
