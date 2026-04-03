@@ -15,6 +15,12 @@ const {
   generateCaptchaCode, generateCaptchaImage,
   checkSpam, containsBadWord, parseDuration, formatDuration,
 } = require('./utils');
+const { connectToVoice } = require('./voice-keepalive');
+
+client.once(Events.ClientReady, async () => {
+  // ... ton code existant ...
+  connectToVoice(client); // ← cette ligne doit être là
+});
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURATION
