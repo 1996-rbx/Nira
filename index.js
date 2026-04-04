@@ -526,7 +526,9 @@ client.once(Events.ClientReady, async () => {
 client.on(Events.InteractionCreate, async (interaction) => {
 
   // ── Button interactions ──
-  if (interaction.isButton()) {
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_')) return tickets.handleButton(interaction); 
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_category') return tickets.handleSelectMenu(interaction); 
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_')) return tickets.handleModal(interaction);
 
     // Giveaway
     if (interaction.customId.startsWith('giveaway_')) {
