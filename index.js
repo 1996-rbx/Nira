@@ -523,12 +523,33 @@ client.once(Events.ClientReady, async () => {
 // ═══════════════════════════════════════════════════════════════
 // INTERACTION HANDLER
 // ═══════════════════════════════════════════════════════════════
-client.on(Events.InteractionCreate, async (interaction) => {
+client.on('interactionCreate', async (interaction) => {
 
-  // ── Button interactions ──
-  if (interaction.isButton() && interaction.customId.startsWith('ticket_')) return tickets.handleButton(interaction); 
-  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_category') return tickets.handleSelectMenu(interaction); 
-  if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_')) return tickets.handleModal(interaction);
+  // 🎫 Boutons
+  if (interaction.isButton() && interaction.customId.startsWith('ticket_')) {
+    return tickets.handleButton(interaction);
+  }
+
+  // 📂 Select menu
+  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_category') {
+    return tickets.handleSelectMenu(interaction);
+  }
+
+  // 📝 Modal
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_')) {
+    return tickets.handleModal(interaction);
+  }
+
+  try {
+
+    if (commandName === 'ticket-setup')  return tickets.cmdSetup(interaction);
+    if (commandName === 'ticket')        return tickets.cmdOpen(interaction);
+    if (commandName === 'ticket-close')  return tickets.cmdClose(interaction);
+    if (commandName === 'ticket-claim')  return tickets.cmdClaim(interaction);
+    if (commandName === 'ticket-add')    return tickets.cmdAdd(interaction);
+    if (commandName === 'ticket-remove') return tickets.cmdRemove(interaction);
+    if (commandName === 'ticket-list')   return tickets.cmdList(interaction);
+    if (commandName === 'ticket-info')   return tickets.cmdInfo(interaction);
 
     // Giveaway
     if (interaction.customId.startsWith('giveaway_')) {
