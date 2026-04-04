@@ -766,7 +766,6 @@ if (commandName === 'setup-ticket') {
   const panelChannel   = options.getChannel('salon');
   const staffRole      = options.getRole('staff');
   const ticketCategory = options.getChannel('categorie');
-  const description = options.getString('description')?.replace(/\\n/g, '\n');
 
   // ⚠️ Validation des options
   if (!panelChannel || panelChannel.type !== 0) 
@@ -776,10 +775,12 @@ if (commandName === 'setup-ticket') {
 
   // 🎨 Options personnalisables
   const titre       = options.getString('titre') || `🎫 Support — ${guild.name}`;
-  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
+  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.;
   let couleur       = options.getString('couleur') || '#5865F2';
   const image       = options.getString('image');
   const footer      = options.getString('footer') || `${guild.name} · Support`;
+
+  description = description.replace(/\\n/g, '\n');
 
   // ✅ Validation couleur hex
   if (couleur.startsWith('#')) {
