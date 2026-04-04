@@ -728,48 +728,74 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return interaction.reply({ embeds: [new EmbedBuilder().setTitle('🔐 Captcha configuré').setDescription(`**Salon:** ${captchaChannel}\n**Rôle:** ${captchaRole}\n**Essais:** ${retryLimit}\n**Kick auto:** 10 min`).setColor(Colors.SUCCESS).setTimestamp()], ephemeral: true });
     }
 
-    // ══════════════════════════════════════════════════
-    // ── /setup-ticket ──
-    // ══════════════════════════════════════════════════
-    if (commandName === 'setup-ticket') {
-      const panelChannel  = options.getChannel('salon');
-      const staffRole     = options.getRole('staff');
-      const ticketCategory = options.getChannel('categorie');
-      const panelMessage  = options.getString('message') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
+// ══════════════════════════════════════════════════
+// ── /setup-ticket ──
+// ══════════════════════════════════════════════════
+if (commandName === 'setup-ticket') {
 
-      dbHelpers.getGuild(guild.id);
-      dbHelpers.updateGuild(guild.id, {
-        ticket_channel:    panelChannel.id,
-        ticket_staff_role: staffRole.id,
-        ticket_category:   ticketCategory?.id || null,
-      });
+  const panelChannel   = options.getChannel('salon');
+  const staffRole      = options.getRole('staff');
+  const ticketCategory = options.getChannel('categorie');
 
-      const panelEmbed = new EmbedBuilder()
-        .setTitle('🎫 Support — ' + guild.name)
-        .setDescription(panelMessage + '\n\n> 📋 Lis le règlement avant d\'ouvrir un ticket.\n> ❌ Les abus entraînent des sanctions.')
-        .setColor(Colors.PRIMARY)
-        .setFooter({ text: `${guild.name} · Support` })
-        .setTimestamp();
+  // 🎨 Options personnalisables
+  const titre       = options.getString('titre') || `🎫 Support — ${guild.name}`;
+  const description = options.getString('description') 
+    || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
+  const couleur     = options.getString('couleur') || '#5865F2';
+  const image       = options.getString('image');
+  const footer      = options.getString('footer') || `${guild.name} · Support`;
 
-      const openBtn = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('ticket_open').setLabel('Ouvrir un ticket').setStyle(ButtonStyle.Primary).setEmoji('🎫'),
-      );
+  // 💾 Sauvegarde config
+  dbHelpers.getGuild(guild.id);
+  dbHelpers.updateGuild(guild.id, {
+    ticket_channel:    panelChannel.id,
+    ticket_staff_role: staffRole.id,
+    ticket_category:   ticketCategory?.id || null,
+  });
 
-      await panelChannel.send({ embeds: [panelEmbed], components: [openBtn] });
+  // 🧱 Création embed CUSTOM
+  const panelEmbed = new EmbedBuilder()
+    .setTitle(titre)
+    .setDescription(description)
+    .setColor(couleur)
+    .setFooter({ text: footer })
+    .setTimestamp();
 
-      return interaction.reply({
-        embeds: [new EmbedBuilder()
-          .setTitle('✅ Système de tickets configuré')
-          .addFields(
-            { name: 'Salon panneau',  value: `${panelChannel}`,            inline: true },
-            { name: 'Rôle staff',     value: `${staffRole}`,               inline: true },
-            { name: 'Catégorie',      value: ticketCategory ? `${ticketCategory}` : 'Racine', inline: true },
-          )
-          .setColor(Colors.SUCCESS)
-          .setTimestamp()],
-        ephemeral: true,
-      });
-    }
+  if (image) panelEmbed.setImage(image);
+
+  // 🔘 Bouton ouverture ticket
+  const openBtn = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ticket_open')
+      .setLabel('Ouvrir un ticket')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('🎫'),
+  );
+
+  // 📤 Envoi panneau
+  await panelChannel.send({
+    embeds: [panelEmbed],
+    components: [openBtn]
+  });
+
+  // ✅ Confirmation
+  return interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle('✅ Système de tickets configuré')
+        .addFields(
+          { name: 'Salon panneau', value: `${panelChannel}`, inline: true },
+          { name: 'Rôle staff', value: `${staffRole}`, inline: true },
+          { name: 'Catégorie', value: ticketCategory ? `${ticketCategory}` : 'Racine', inline: true },
+          { name: 'Titre', value: titre, inline: false },
+          { name: 'Couleur', value: couleur, inline: true }
+        )
+        .setColor(0x00FF00)
+        .setTimestamp()
+    ],
+    ephemeral: true,
+  });
+}
 
     // ── /ticket ──
     if (commandName === 'ticket') {
