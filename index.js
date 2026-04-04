@@ -766,6 +766,7 @@ if (commandName === 'setup-ticket') {
   const panelChannel   = options.getChannel('salon');
   const staffRole      = options.getRole('staff');
   const ticketCategory = options.getChannel('categorie');
+  const description = options.getString('description')?.replace(/\\n/g, '\n');
 
   // ⚠️ Validation des options
   if (!panelChannel || panelChannel.type !== 0) 
