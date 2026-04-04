@@ -525,30 +525,6 @@ client.once(Events.ClientReady, async () => {
 // ═══════════════════════════════════════════════════════════════
 client.on('interactionCreate', async (interaction) => {
 
-  // 🎫 Boutons
-  if (interaction.isButton() && interaction.customId.startsWith('ticket_')) {
-    return tickets.handleButton(interaction);
-  }
-
-  // 📂 Select menu
-  if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_category') {
-    return tickets.handleSelectMenu(interaction);
-  }
-
-  // 📝 Modal
-  if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_')) {
-    return tickets.handleModal(interaction);
-  }
-
-    if (commandName === 'ticket-setup')  return tickets.cmdSetup(interaction);
-    if (commandName === 'ticket')        return tickets.cmdOpen(interaction);
-    if (commandName === 'ticket-close')  return tickets.cmdClose(interaction);
-    if (commandName === 'ticket-claim')  return tickets.cmdClaim(interaction);
-    if (commandName === 'ticket-add')    return tickets.cmdAdd(interaction);
-    if (commandName === 'ticket-remove') return tickets.cmdRemove(interaction);
-    if (commandName === 'ticket-list')   return tickets.cmdList(interaction);
-    if (commandName === 'ticket-info')   return tickets.cmdInfo(interaction);
-
     // Giveaway
     if (interaction.customId.startsWith('giveaway_')) {
       const giveawayId = parseInt(interaction.customId.split('_')[1]);
@@ -788,30 +764,17 @@ if (commandName === 'setup-ticket') {
   const staffRole      = options.getRole('staff');
   const ticketCategory = options.getChannel('categorie');
 
-  // ⚠️ Validation des options
-  if (!panelChannel || panelChannel.type !== 0) 
-    return interaction.reply({ content: '❌ Salon invalide.', ephemeral: true });
-  if (!staffRole) 
-    return interaction.reply({ content: '❌ Rôle staff invalide.', ephemeral: true });
-
   // 🎨 Options personnalisables
   const titre       = options.getString('titre') || `🎫 Support — ${guild.name}`;
-  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
-  let couleur       = options.getString('couleur') || '#5865F2';
+  const description = options.getString('description') 
+    || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
+  const couleur     = options.getString('couleur') || '#5865F2';
   const image       = options.getString('image');
   const footer      = options.getString('footer') || `${guild.name} · Support`;
 
-  description = description.replace(/\\n/g, '\n');
-
-  // ✅ Validation couleur hex
-  if (couleur.startsWith('#')) {
-    try { couleur = parseInt(couleur.replace('#', ''), 16); } 
-    catch { couleur = 0x5865F2; }
-  }
-
   // 💾 Sauvegarde config
-  await dbHelpers.getGuild(guild.id);
-  await dbHelpers.updateGuild(guild.id, {
+  dbHelpers.getGuild(guild.id);
+  dbHelpers.updateGuild(guild.id, {
     ticket_channel:    panelChannel.id,
     ticket_staff_role: staffRole.id,
     ticket_category:   ticketCategory?.id || null,
@@ -852,10 +815,7 @@ if (commandName === 'setup-ticket') {
           { name: 'Rôle staff', value: `${staffRole}`, inline: true },
           { name: 'Catégorie', value: ticketCategory ? `${ticketCategory}` : 'Racine', inline: true },
           { name: 'Titre', value: titre, inline: false },
-          { name: 'Description', value: description, inline: false },
-          { name: 'Couleur', value: `#${couleur.toString(16).padStart(6,'0')}`, inline: true },
-          { name: 'Footer', value: footer, inline: true },
-          { name: 'Image', value: image ? image : 'Aucune', inline: true },
+          { name: 'Couleur', value: couleur, inline: true }
         )
         .setColor(0x00FF00)
         .setTimestamp()
