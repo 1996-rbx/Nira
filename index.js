@@ -78,15 +78,45 @@ const commands = [
     .addRoleOption(o => o.setName('role').setDescription('Role donne apres validation').setRequired(true))
     .addIntegerOption(o => o.setName('essais').setDescription('Nombre d\'essais max (defaut: 3)').setMinValue(1).setMaxValue(10)),
 
-  // ── Setup Ticket ──
-  new SlashCommandBuilder()
-    .setName('setup-ticket')
-    .setDescription('Configurer le systeme de tickets')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addChannelOption(o => o.setName('salon').setDescription('Salon ou envoyer le panneau ticket').setRequired(true))
-    .addRoleOption(o => o.setName('staff').setDescription('Role staff pour les tickets').setRequired(true))
-    .addChannelOption(o => o.setName('categorie').setDescription('Categorie pour les salons de tickets'))
-    .addStringOption(o => o.setName('message').setDescription('Message du panneau (defaut: ouvrir un ticket)')),
+// ── Setup Ticket ──
+new SlashCommandBuilder()
+  .setName('setup-ticket')
+  .setDescription('Configurer le système de tickets')
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addChannelOption(o => 
+    o.setName('salon')
+     .setDescription('Salon où envoyer le panneau ticket')
+     .setRequired(true)
+  )
+  .addRoleOption(o => 
+    o.setName('staff')
+     .setDescription('Rôle staff pour les tickets')
+     .setRequired(true)
+  )
+  .addChannelOption(o => 
+    o.setName('categorie')
+     .setDescription('Catégorie pour les salons de tickets')
+  )
+  .addStringOption(o => 
+    o.setName('titre')
+     .setDescription('Titre de l\'embed')
+  )
+  .addStringOption(o => 
+    o.setName('description')
+     .setDescription('Description de l\'embed')
+  )
+  .addStringOption(o => 
+    o.setName('couleur')
+     .setDescription('Couleur de l\'embed (ex: #ff0000)')
+  )
+  .addStringOption(o => 
+    o.setName('image')
+     .setDescription('URL de l\'image de l\'embed')
+  )
+  .addStringOption(o => 
+    o.setName('footer')
+     .setDescription('Footer de l\'embed')
+  );
 
   // ── Moderation ──
   new SlashCommandBuilder()
