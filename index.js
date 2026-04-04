@@ -737,17 +737,28 @@ if (commandName === 'setup-ticket') {
   const staffRole      = options.getRole('staff');
   const ticketCategory = options.getChannel('categorie');
 
+  // ⚠️ Validation des options
+  if (!panelChannel || panelChannel.type !== 0) 
+    return interaction.reply({ content: '❌ Salon invalide.', ephemeral: true });
+  if (!staffRole) 
+    return interaction.reply({ content: '❌ Rôle staff invalide.', ephemeral: true });
+
   // 🎨 Options personnalisables
   const titre       = options.getString('titre') || `🎫 Support — ${guild.name}`;
-  const description = options.getString('description') 
-    || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
-  const couleur     = options.getString('couleur') || '#5865F2';
+  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
+  let couleur       = options.getString('couleur') || '#5865F2';
   const image       = options.getString('image');
   const footer      = options.getString('footer') || `${guild.name} · Support`;
 
+  // ✅ Validation couleur hex
+  if (couleur.startsWith('#')) {
+    try { couleur = parseInt(couleur.replace('#', ''), 16); } 
+    catch { couleur = 0x5865F2; }
+  }
+
   // 💾 Sauvegarde config
-  dbHelpers.getGuild(guild.id);
-  dbHelpers.updateGuild(guild.id, {
+  await dbHelpers.getGuild(guild.id);
+  await dbHelpers.updateGuild(guild.id, {
     ticket_channel:    panelChannel.id,
     ticket_staff_role: staffRole.id,
     ticket_category:   ticketCategory?.id || null,
@@ -788,7 +799,10 @@ if (commandName === 'setup-ticket') {
           { name: 'Rôle staff', value: `${staffRole}`, inline: true },
           { name: 'Catégorie', value: ticketCategory ? `${ticketCategory}` : 'Racine', inline: true },
           { name: 'Titre', value: titre, inline: false },
-          { name: 'Couleur', value: couleur, inline: true }
+          { name: 'Description', value: description, inline: false },
+          { name: 'Couleur', value: `#${couleur.toString(16).padStart(6,'0')}`, inline: true },
+          { name: 'Footer', value: footer, inline: true },
+          { name: 'Image', value: image ? image : 'Aucune', inline: true },
         )
         .setColor(0x00FF00)
         .setTimestamp()
@@ -796,7 +810,6 @@ if (commandName === 'setup-ticket') {
     ephemeral: true,
   });
 }
-
     // ── /ticket ──
     if (commandName === 'ticket') {
       const config = dbHelpers.getGuild(guild.id);
