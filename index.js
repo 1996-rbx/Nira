@@ -654,9 +654,6 @@ client.on('interactionCreate', async (interaction) => {
     return;
   },
 
-  // ── Modal submits ──
-  if (interaction.isModalSubmit()) {
-
     // Captcha
     if (interaction.customId.startsWith('captcha_modal_')) {
       const inputCode = interaction.fields.getTextInputValue('captcha_code');
