@@ -657,7 +657,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     return;
-  }
+  },
 
   // ── Modal submits ──
   if (interaction.isModalSubmit()) {
