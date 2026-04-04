@@ -775,7 +775,7 @@ if (commandName === 'setup-ticket') {
 
   // 🎨 Options personnalisables
   const titre       = options.getString('titre') || `🎫 Support — ${guild.name}`;
-  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.;
+  const description = options.getString('description') || 'Clique sur le bouton ci-dessous pour ouvrir un ticket.\nUn membre du staff te répondra rapidement.';
   let couleur       = options.getString('couleur') || '#5865F2';
   const image       = options.getString('image');
   const footer      = options.getString('footer') || `${guild.name} · Support`;
