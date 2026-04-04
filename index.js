@@ -116,8 +116,8 @@ new SlashCommandBuilder()
   .addStringOption(o => 
     o.setName('footer')
      .setDescription('Footer de l\'embed')
-  );
-
+  ), // <-- virgule ici, car c'est un élément du tableau `commands`
+  
   // ── Moderation ──
   new SlashCommandBuilder()
     .setName('ban')
