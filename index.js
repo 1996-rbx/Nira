@@ -540,8 +540,6 @@ client.on('interactionCreate', async (interaction) => {
     return tickets.handleModal(interaction);
   }
 
-  try {
-
     if (commandName === 'ticket-setup')  return tickets.cmdSetup(interaction);
     if (commandName === 'ticket')        return tickets.cmdOpen(interaction);
     if (commandName === 'ticket-close')  return tickets.cmdClose(interaction);
