@@ -534,6 +534,14 @@ function parseColor(colorStr) {
   return isNaN(parsed) ? Colors.PRIMARY : parsed;
 }
 
+function applyLineBreaks(input) {
+  if (typeof input !== 'string') return input;
+  return input
+    .replace(/\\\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ANTI-RAID TRACKER
 // ═══════════════════════════════════════════════════════════════
@@ -964,12 +972,12 @@ if (commandName === 'setup-ticket') {
   const ticketCategory = options.getChannel('category');
 
   // 🎨 Custom options
-  const titre       = options.getString('title') || `🎫 Support — ${guild.name}`;
-  const description = options.getString('description') 
+  const titre       = applyLineBreaks(options.getString('title')) || `🎫 Support — ${guild.name}`;
+  const description = applyLineBreaks(options.getString('description')) 
     || 'Click the button below to open a ticket.\nA staff member will reply shortly.';
   const couleur     = options.getString('color') || '#5865F2';
   const image       = options.getString('image');
-  const footer      = options.getString('footer') || `${guild.name} · Support Center`;
+  const footer      = applyLineBreaks(options.getString('footer')) || `${guild.name} · Support Center`;
 
   // 💾 Save config
   dbHelpers.getGuild(guild.id);
@@ -1098,12 +1106,12 @@ if (commandName === 'setup-ticket') {
     // ── /embed ──
     // ══════════════════════════════════════════════════
     if (commandName === 'embed') {
-      const titre        = options.getString('title');
-      const description  = options.getString('description');
+      const titre        = applyLineBreaks(options.getString('title'));
+      const description  = applyLineBreaks(options.getString('description'));
       const targetChannel = options.getChannel('channel') || channel;
       const couleur      = options.getString('color');
-      const footer       = options.getString('footer');
-      const author       = options.getString('author');
+      const footer       = applyLineBreaks(options.getString('footer'));
+      const author       = applyLineBreaks(options.getString('author'));
       const authorIcon   = options.getString('author_icon');
       const thumbnail    = options.getString('thumbnail');
       const imageUrl     = options.getString('image');
@@ -1113,7 +1121,7 @@ if (commandName === 'setup-ticket') {
       // Build the embed
       const embed = new EmbedBuilder()
         .setTitle(titre)
-        .setDescription(description.replace(/\\n/g, '\n')) // support literal \n in command input
+        .setDescription(description)
         .setColor(parseColor(couleur));
 
       if (footer)    embed.setFooter({ text: footer });
