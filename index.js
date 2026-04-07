@@ -556,6 +556,35 @@ function checkRaid(guildId) {
   return recent.length >= 5;
 }
 
+const MASS_MENTION_THRESHOLD = 5;
+const DISCORD_INVITE_LINK_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:discord(?:app)?\.com\/invite|discord\.gg|discord\.me|discord\.io|discord\.li)\/[a-z0-9-]{2,}/i;
+const DISCORD_INVITE_COMPACT_REGEX = /(discordgg\/[a-z0-9-]{2,}|discordappcom\/invite\/?[a-z0-9-]{2,}|discordcom\/invite\/?[a-z0-9-]{2,}|discordme\/[a-z0-9-]{2,}|discordio\/[a-z0-9-]{2,}|discordli\/[a-z0-9-]{2,})/i;
+
+function normalizeAutomodContent(content) {
+  return (content || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+}
+
+function hasDiscordInvite(content) {
+  const normalized = normalizeAutomodContent(content);
+  if (DISCORD_INVITE_LINK_REGEX.test(normalized)) return true;
+  const compact = normalized.toLowerCase().replace(/[^a-z0-9/]/g, '');
+  return DISCORD_INVITE_COMPACT_REGEX.test(compact);
+}
+
+function isExcessiveCaps(content) {
+  const letters = content.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, '');
+  if (letters.length < 12) return false;
+  const upperCount = letters.replace(/[^A-ZÀ-ÖØ-Þ]/g, '').length;
+  return upperCount / letters.length >= 0.8;
+}
+
+function hasRepeatedCharacterSpam(content) {
+  return /([^\s])\1{14,}/.test(content);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // READY EVENT
 // ═══════════════════════════════════════════════════════════════
@@ -1369,7 +1398,7 @@ if (commandName === 'setup-ticket') {
     if (commandName === 'automod') {
       const config    = dbHelpers.getGuild(guild.id);
       const fullyActive = !!config.automod_enabled && dbHelpers.isModuleEnabled(guild.id, 'automod');
-      const embed     = new EmbedBuilder().setTitle('🛡️ Auto-Moderation').setDescription(`**Status:** ${fullyActive ? '🟢 Enabled' : '🔴 Disabled'}\n\n> Anti-spam · Profanity filter · Invite-link filter`).setColor(fullyActive ? Colors.SUCCESS : Colors.ERROR).setTimestamp();
+      const embed     = new EmbedBuilder().setTitle('🛡️ Auto-Moderation').setDescription(`**Status:** ${fullyActive ? '🟢 Enabled' : '🔴 Disabled'}\n\n> Anti-spam · Profanity filter · Invite-link filter\n> Anti mass-mention · Anti flood/caps`).setColor(fullyActive ? Colors.SUCCESS : Colors.ERROR).setTimestamp();
       const buttons   = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('sys_toggle_automod').setLabel(fullyActive ? 'Disable' : 'Enable').setStyle(fullyActive ? ButtonStyle.Danger : ButtonStyle.Success), new ButtonBuilder().setCustomId('sys_test_automod').setLabel('Test').setStyle(ButtonStyle.Secondary));
       return interaction.reply({ embeds: [embed], components: [buttons], ephemeral: true });
     }
@@ -1404,21 +1433,27 @@ if (commandName === 'setup-ticket') {
     // ── /statistics ──
     if (commandName === 'statistics') {
       const target         = options.getUser('member') || user;
-      const stats          = dbHelpers.getStats(guild.id, target.id);
+      const targetMember   = await guild.members.fetch(target.id).catch(() => null);
+      const joinedAtISO    = targetMember?.joinedAt ? targetMember.joinedAt.toISOString() : null;
+      const stats          = dbHelpers.getStats(guild.id, target.id, joinedAtISO);
       const activeSession  = dbHelpers.getVoiceSession(guild.id, target.id);
-      let totalVoiceTime   = stats.voice_time;
+      let totalVoiceTime   = Number(stats.voice_time) || 0;
       if (activeSession) {
         totalVoiceTime += Math.floor((Date.now() - new Date(activeSession.joined_at).getTime()) / 1000);
       }
       const hours    = Math.floor(totalVoiceTime / 3600);
       const minutes  = Math.floor((totalVoiceTime % 3600) / 60);
       const voiceFmt = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+      const trackedTimestamp = stats.tracking_since
+        ? Math.floor(new Date(stats.tracking_since).getTime() / 1000)
+        : (targetMember?.joinedTimestamp ? Math.floor(targetMember.joinedTimestamp / 1000) : null);
       const embed    = new EmbedBuilder()
         .setTitle(`📊 Statistics for ${target.username}`)
         .setThumbnail(target.displayAvatarURL({ size: 256 }))
         .addFields(
-          { name: '💬 Messages Sent', value: `**${stats.message_count.toLocaleString()}**`, inline: true },
+          { name: '💬 Messages Sent', value: `**${(Number(stats.message_count) || 0).toLocaleString()}**`, inline: true },
           { name: '🎙️ Voice Time', value: `**${voiceFmt}**`, inline: true },
+          { name: '🗓️ Tracking Since', value: trackedTimestamp ? `<t:${trackedTimestamp}:F>\n(<t:${trackedTimestamp}:R>)` : 'Unknown', inline: false },
         )
         .setColor(Colors.PRIMARY)
         .setFooter({ text: `Statistics in ${guild.name}` })
@@ -1490,6 +1525,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 client.on(Events.GuildMemberAdd, async (member) => {
   if (member.user.bot) return;
   const config = dbHelpers.getGuild(member.guild.id);
+  dbHelpers.getStats(member.guild.id, member.id, member.joinedAt ? member.joinedAt.toISOString() : null);
   if (config.antiraid_enabled && checkRaid(member.guild.id)) {
     try { await member.kick('Anti-raid'); await sendLog(member.guild, new EmbedBuilder().setTitle('🛡️ Anti-Raid').setDescription(`${member.user.tag} kicked (raid detected)`).setColor(Colors.ERROR).setTimestamp()); return; } catch (_) {}
   }
@@ -1550,23 +1586,39 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild) return;
   const config = dbHelpers.getGuild(message.guild.id);
-  dbHelpers.incrementMessageCount(message.guild.id, message.author.id);
+  const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
+  const trackingSince = member?.joinedAt ? member.joinedAt.toISOString() : null;
+  dbHelpers.incrementMessageCount(message.guild.id, message.author.id, trackingSince);
 
   if (config.automod_enabled && dbHelpers.isModuleEnabled(message.guild.id, 'automod')) {
+    const normalizedContent = normalizeAutomodContent(message.content);
+    const mentionCount = message.mentions.users.size + message.mentions.roles.size;
+    const isMassMention = message.mentions.everyone || mentionCount >= MASS_MENTION_THRESHOLD;
+    const skipStrictChecks = !!member?.permissions.has(PermissionFlagsBits.ManageMessages);
+
     if (checkSpam(message.author.id, message.guild.id)) {
-      try { await message.delete(); const m = await message.guild.members.fetch(message.author.id); if (m.moderatable) { await m.timeout(300000, 'Anti-spam'); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`🔇 ${message.author} timed out for 5 minutes (spam).`).setColor(Colors.MODERATION)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } } catch (_) {}
+      try { await message.delete(); if (member?.moderatable) { await member.timeout(300000, 'Anti-spam'); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`🔇 ${message.author} timed out for 5 minutes (spam).`).setColor(Colors.MODERATION)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } } catch (_) {}
       return;
     }
-    if (containsBadWord(message.content)) {
+    if (containsBadWord(normalizedContent)) {
       try { await message.delete(); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ ${message.author}, message deleted (inappropriate language).`).setColor(Colors.WARNING)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } catch (_) {}
       return;
     }
-    if (/(discord\.gg|discordapp\.com\/invite|discord\.com\/invite)\//i.test(message.content)) {
-      const m = await message.guild.members.fetch(message.author.id);
-      if (!m.permissions.has(PermissionFlagsBits.ManageMessages)) {
-        try { await message.delete(); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ ${message.author}, invite links are not allowed.`).setColor(Colors.WARNING)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } catch (_) {}
-        return;
-      }
+    if (!skipStrictChecks && hasDiscordInvite(normalizedContent)) {
+      try { await message.delete(); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ ${message.author}, Discord invite links are not allowed.`).setColor(Colors.WARNING)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } catch (_) {}
+      return;
+    }
+    if (!skipStrictChecks && isMassMention) {
+      try {
+        await message.delete();
+        if (member?.moderatable) await member.timeout(600000, 'Mass mention detected');
+        await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ ${message.author}, mass mentions are not allowed.`).setColor(Colors.WARNING)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+      } catch (_) {}
+      return;
+    }
+    if (!skipStrictChecks && (isExcessiveCaps(normalizedContent) || hasRepeatedCharacterSpam(normalizedContent))) {
+      try { await message.delete(); await message.channel.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ ${message.author}, message deleted (flood/caps detected).`).setColor(Colors.WARNING)] }).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000)); } catch (_) {}
+      return;
     }
   }
 
@@ -1588,8 +1640,10 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   const userId  = newState.member?.id || oldState.member?.id;
   const guildId = newState.guild?.id  || oldState.guild?.id;
+  const member  = newState.member || oldState.member;
   if (!userId || !guildId) return;
-  if (newState.member?.user?.bot) return;
+  if (newState.member?.user?.bot || oldState.member?.user?.bot) return;
+  dbHelpers.getStats(guildId, userId, member?.joinedAt ? member.joinedAt.toISOString() : null);
   if (!oldState.channelId && newState.channelId)  dbHelpers.startVoiceSession(guildId, userId);
   else if (oldState.channelId && !newState.channelId) dbHelpers.endVoiceSession(guildId, userId);
 });
