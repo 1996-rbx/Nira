@@ -147,6 +147,7 @@ db.exec(`
     user_id TEXT NOT NULL,
     message_count INTEGER DEFAULT 0,
     voice_time INTEGER DEFAULT 0,
+    tracking_since TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (guild_id, user_id)
   );
 
@@ -176,6 +177,12 @@ for (const [col, type] of newCols) {
   if (!guildCols.includes(col)) {
     db.prepare(`ALTER TABLE guilds ADD COLUMN ${col} ${type}`).run();
   }
+}
+
+// Migration: add tracking_since to member_statistics if needed
+const memberStatsCols = db.prepare("PRAGMA table_info(member_statistics)").all().map(c => c.name);
+if (!memberStatsCols.includes('tracking_since')) {
+  db.prepare("ALTER TABLE member_statistics ADD COLUMN tracking_since TEXT").run();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -384,20 +391,28 @@ const dbHelpers = {
   },
 
   // ── Member Statistics ───────────────────────────────────────
-  getStats(guildId, userId) {
-    let row = db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
-    if (!row) {
-      db.prepare('INSERT OR IGNORE INTO member_statistics (guild_id, user_id) VALUES (?, ?)').run(guildId, userId);
-      row = { guild_id: guildId, user_id: userId, message_count: 0, voice_time: 0 };
+  getStats(guildId, userId, trackingSince = null) {
+    const fallbackSince = trackingSince || new Date().toISOString();
+    db.prepare(
+      'INSERT OR IGNORE INTO member_statistics (guild_id, user_id, tracking_since) VALUES (?, ?, ?)'
+    ).run(guildId, userId, fallbackSince);
+
+    if (trackingSince) {
+      db.prepare(
+        `UPDATE member_statistics
+         SET tracking_since = ?
+         WHERE guild_id = ? AND user_id = ? AND (tracking_since IS NULL OR tracking_since = '')`
+      ).run(trackingSince, guildId, userId);
     }
-    return row;
+
+    return db.prepare('SELECT * FROM member_statistics WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
   },
-  incrementMessageCount(guildId, userId) {
-    this.getStats(guildId, userId);
+  incrementMessageCount(guildId, userId, trackingSince = null) {
+    this.getStats(guildId, userId, trackingSince);
     db.prepare('UPDATE member_statistics SET message_count = message_count + 1 WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
   },
-  addVoiceTime(guildId, userId, seconds) {
-    this.getStats(guildId, userId);
+  addVoiceTime(guildId, userId, seconds, trackingSince = null) {
+    this.getStats(guildId, userId, trackingSince);
     db.prepare('UPDATE member_statistics SET voice_time = voice_time + ? WHERE guild_id = ? AND user_id = ?').run(seconds, guildId, userId);
   },
 
